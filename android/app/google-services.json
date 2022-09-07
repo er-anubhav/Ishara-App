@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "744112490671",
+    "project_id": "docuhealth-ed67d",
+    "storage_bucket": "docuhealth-ed67d.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:744112490671:android:320fd2625db211d554ec5a",
+        "android_client_info": {
+          "package_name": "app.docuhealth.com"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "744112490671-2m4ed5sdaofrluot1r97neatnto6d8f6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDQWent1vZIEZirA47IAlK4Jz2MNg5Sxg4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "744112490671-2m4ed5sdaofrluot1r97neatnto6d8f6.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
