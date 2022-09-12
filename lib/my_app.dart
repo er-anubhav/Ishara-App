@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:docuhealth/controllers/dashboard_controllers.dart';
 import 'package:docuhealth/controllers/document_controller.dart';
 import 'package:provider/provider.dart';
+import 'controllers/daily_measurement_controller.dart';
 import 'contstants/app_colors.dart';
 import 'screen/document_category/test_reports.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -23,6 +24,8 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (create) => DocumentController()),
         ChangeNotifierProvider(create: (create) => DashBoardController()),
+        ChangeNotifierProvider(
+            create: (create) => DailyMeasurementController()),
       ],
       child: ScreenUtilInit(
         designSize: const Size(375, 812),

@@ -8,7 +8,7 @@ import 'package:intl/intl.dart';
 import '../model/daily_measurement/analytics_data.dart';
 import '../model/daily_measurement/measurement_data.dart';
 
-class DailyMeasurement extends ChangeNotifier {
+class DailyMeasurementController extends ChangeNotifier {
   BaseClient baseClient = BaseClient();
   GetDailyMeasurements getDailyMeasurements = GetDailyMeasurements();
   GetAnalytics getAnalytics = GetAnalytics();

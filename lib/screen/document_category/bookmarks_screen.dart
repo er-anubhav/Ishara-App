@@ -256,439 +256,356 @@ class _PharmacyRecordState extends State<BookMarksScreen>
           ),
         ),
       ),
-      // floatingActionButton: widget.operationType == "copy" ||
-      //         widget.operationType == "move"
-      //     ? FloatingActionButton.extended(
-      //         backgroundColor: AppColors.primaryColor,
-      //         icon: const Icon(Icons.paste),
-      //         label: const Text('Paste'),
-      //         onPressed: () async {
-      //           await showDialog(
-      //             context: context,
-      //             builder: (context) => FutureProgressDialog(
-      //                 onPasteButtonPress(),
-      //                 message: const Text('Please wait...')),
-      //           ).whenComplete(() => _onRefresh());
-      //         },
-      //       )
-      //     : Column(
-      //         mainAxisAlignment: MainAxisAlignment.end,
-      //         children: <Widget>[
-      //           Transform(
-      //             transform: Matrix4.translationValues(
-      //               0.0,
-      //               _translateButton!.value * 2.0,
-      //               0.0,
-      //             ),
-      //             child: FloatingActionButton(
-      //               heroTag: "btn1",
-      //               onPressed: () async {
-      //                 animate();
-      //                 await showModalBottomSheet(
-      //                   context: context,
-      //                   isScrollControlled: true,
-      //                   shape: const RoundedRectangleBorder(
-      //                     borderRadius: BorderRadius.only(
-      //                         topLeft: Radius.circular(20),
-      //                         topRight: Radius.circular(20)),
-      //                   ),
-      //                   builder: (context) {
-      //                     return CreateFolderDialog(
-      //                       categoryName: widget.categoryName,
-      //                     );
-      //                   },
-      //                 ).whenComplete(() => _onRefresh());
-      //               },
-      //               backgroundColor: Colors.white,
-      //               tooltip: widget.categoryName == "DOCTOR_PRESCRIPTION"
-      //                   ? 'Create new Doctor'
-      //                   : widget.categoryName == "HOSPITAL_BILLS"
-      //                       ? 'Create new Hospital'
-      //                       : 'Create new Folder',
-      //               child: SizedBox(
-      //                 height: 40.h,
-      //                 width: 40.w,
-      //                 child: widget.categoryName == "DOCTOR_PRESCRIPTION"
-      //                     ? Image.asset('assets/images/person-image.png')
-      //                     : widget.categoryName == "HOSPITAL_BILLS"
-      //                         ? Image.asset('assets/icons/hospital-icon.png')
-      //                         : Icon(
-      //                             Icons.folder,
-      //                             color: AppColors.darkGreyTextColor,
-      //                           ),
-      //               ),
-      //             ),
-      //           ),
-      //           Transform(
-      //             transform: Matrix4.translationValues(
-      //               0.0,
-      //               _translateButton!.value,
-      //               0.0,
-      //             ),
-      //             child: FloatingActionButton(
-      //                 heroTag: "btn2",
-      //                 onPressed: () {
-      //                   animate();
-      //                   Get.to(CameraScreen(
-      //                     selectedCategory: widget.categoryName,
-      //                     appBarTitle: widget.appBarTitle,
-      //                   ));
-      //                 },
-      //                 backgroundColor: Colors.white,
-      //                 tooltip: 'Scan Document',
-      //                 child: Icon(
-      //                   Icons.document_scanner,
-      //                   color: AppColors.darkGreyTextColor,
-      //                 )),
-      //           ),
-      //           FloatingActionButton(
-      //             heroTag: "btn3",
-      //             backgroundColor: _buttonColor!.value,
-      //             onPressed: animate,
-      //             tooltip: 'Toggle',
-      //             child: Icon(
-      //               Icons.add,
-      //               size: 30.r,
-      //             ),
-      //           ),
-      //         ],
-      //       ),
-      body: SmartRefresher(
-        enablePullUp: true,
-        enablePullDown: true,
-        header: const WaterDropHeader(),
-        controller: refreshController,
-        onRefresh: _onRefresh,
-        onLoading: _onLoading,
-        child: ListView.builder(
-          shrinkWrap: true,
-          itemCount: listData.length,
-          itemBuilder: (_, i) {
-            print(widget.categoryName);
-            return Card(
-              color: AppColors.whitebgColor,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10.r),
+      body: listData.isEmpty
+          ? const Center(
+              child: Text(
+                "Data not found",
+                style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.w500),
               ),
-              child: ListTile(
-                onTap: () {
-                  if (listData[i]['tag'] == "folder") {
-                    Get.to(FilesScreen(
-                      operationType: "",
-                      redirectTo: "",
-                      appBarTitle: listData[i]['name'],
-                      folderId: listData[i]['id'],
-                      fileId: widget.fileId,
-                      categoryName: listData[i]['belongs_to'],
-                      documentType: widget.documentType,
-                    ));
-                  } else if (listData[i]['file_type'] == "image") {
-                    Get.to(ImagePreviewScreen(
-                      imageUrl: listData[i]['file'],
-                      fileId: listData[i]['id'],
-                      fileName: listData[i]['name'] ?? '',
-                      remarks: listData[i]['remarks'] ?? '',
-                    ));
-                  } else {
-                    Get.to(PdfPreviewScreen(
-                      isFromFile: false,
-                      documentUrl: listData[i]['file'],
-                      fileId: listData[i]['id'],
-                      fileName: listData[i]['name'] ?? '',
-                      remarks: listData[i]['remarks'] ?? '',
-                      isNetworkImage: true,
-                    ));
-                  }
-                },
-                contentPadding:
-                    EdgeInsets.symmetric(vertical: 15.h, horizontal: 5.w),
-                leading: Container(
-                  height: 70.h,
-                  width: 70.w,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(15.r),
-                    image: listData[i]['tag'] == "folder"
-                        ? DecorationImage(
-                            image: AssetImage(widget.categoryName ==
-                                    "DOCTOR_PRESCRIPTION"
-                                ? 'assets/images/person-image.png'
-                                : widget.categoryName == "HOSPITAL_BILLS"
-                                    ? 'assets/icons/hospital-icon.png'
-                                    : 'assets/icons/blood-pressure-file.png'),
-                          )
-                        : DecorationImage(
-                            image: NetworkImage(listData[i]['thumbnail_file']),
-                            fit: BoxFit.cover,
-                          ),
-                  ),
-                ),
-                title: Text(
-                  listData[i]['name'],
-                  maxLines: 1,
-                  style: TextStyle(
-                    fontSize: 15.sp,
-                    fontWeight: FontWeight.w400,
-                    color: AppColors.darkGreyTextColor,
-                  ),
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      listData[i]['created_at'],
-                      maxLines: 1,
-                      style: TextStyle(
-                        fontSize: 12.sp,
-                        fontWeight: FontWeight.w400,
-                        color: AppColors.primaryColor,
-                      ),
+            )
+          : SmartRefresher(
+              enablePullUp: true,
+              enablePullDown: true,
+              header: const WaterDropHeader(),
+              controller: refreshController,
+              onRefresh: _onRefresh,
+              onLoading: _onLoading,
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: listData.length,
+                itemBuilder: (_, i) {
+                  return Card(
+                    color: AppColors.whitebgColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10.r),
                     ),
-                    SizedBox(
-                      height: 2.h,
-                    ),
-                    listData[i]['tag'] == "folder"
-                        ? const SizedBox()
-                        : Text(
-                            listData[i]['remarks'] ?? '',
-                            maxLines: 2,
-                            style: TextStyle(
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.lightGreyTextColor,
-                            ),
-                          ),
-                  ],
-                ),
-                trailing: SizedBox(
-                  width: 100,
-                  child: Row(
-                    children: [
-                      IconButton(
-                        onPressed: () async {
-                          if (listData[i]['tag'] == "folder") {
-                            if (listData[i]['bookmark'] == "No") {
-                              final resp = await showDialog(
-                                context: context,
-                                builder: (context) => FutureProgressDialog(
-                                  onBookMarkButtonPress(
-                                      listData[i]['folder_id'],
-                                      'add',
-                                      'folder'),
-                                  message: const Text(
-                                    'Please wait...',
-                                  ),
+                    child: ListTile(
+                      onTap: () {
+                        if (listData[i]['tag'] == "folder") {
+                          Get.to(FilesScreen(
+                            operationType: "",
+                            redirectTo: "",
+                            appBarTitle: listData[i]['name'],
+                            folderId: listData[i]['id'],
+                            fileId: widget.fileId,
+                            categoryName: listData[i]['belongs_to'],
+                            documentType: widget.documentType,
+                          ));
+                        } else if (listData[i]['file_type'] == "image") {
+                          Get.to(ImagePreviewScreen(
+                            imageUrl: listData[i]['file'],
+                            fileId: listData[i]['id'],
+                            fileName: listData[i]['name'] ?? '',
+                            remarks: listData[i]['remarks'] ?? '',
+                          ));
+                        } else {
+                          Get.to(PdfPreviewScreen(
+                            isFromFile: false,
+                            documentUrl: listData[i]['file'],
+                            fileId: listData[i]['id'],
+                            fileName: listData[i]['name'] ?? '',
+                            remarks: listData[i]['remarks'] ?? '',
+                            isNetworkImage: true,
+                          ));
+                        }
+                      },
+                      contentPadding:
+                          EdgeInsets.symmetric(vertical: 15.h, horizontal: 5.w),
+                      leading: Container(
+                        height: 70.h,
+                        width: 70.w,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(15.r),
+                          image: listData[i]['tag'] == "folder"
+                              ? DecorationImage(
+                                  image: AssetImage(widget.categoryName ==
+                                          "DOCTOR_PRESCRIPTION"
+                                      ? 'assets/images/person-image.png'
+                                      : widget.categoryName == "HOSPITAL_BILLS"
+                                          ? 'assets/icons/hospital-icon.png'
+                                          : 'assets/icons/blood-pressure-file.png'),
+                                )
+                              : DecorationImage(
+                                  image: NetworkImage(
+                                      listData[i]['thumbnail_file']),
+                                  fit: BoxFit.cover,
                                 ),
-                              ).whenComplete(() => _onRefresh());
-                            } else {
-                              final resp = await showDialog(
-                                context: context,
-                                builder: (context) => FutureProgressDialog(
-                                  onBookMarkButtonPress(
-                                    listData[i]['folder_id'],
-                                    'remove',
-                                    'folder',
-                                  ),
-                                  message: const Text(
-                                    'Please wait...',
-                                  ),
-                                ),
-                              ).whenComplete(() => _onRefresh());
-                            }
-                          } else {
-                            if (listData[i]['bookmark'] == "No") {
-                              final resp = await showDialog(
-                                context: context,
-                                builder: (context) => FutureProgressDialog(
-                                  onBookMarkButtonPress(
-                                      listData[i]['file_id'], 'add', 'file'),
-                                  message: const Text(
-                                    'Please wait...',
-                                  ),
-                                ),
-                              ).whenComplete(() => _onRefresh());
-                            } else {
-                              final resp = await showDialog(
-                                context: context,
-                                builder: (context) => FutureProgressDialog(
-                                  onBookMarkButtonPress(
-                                    listData[i]['file_id'],
-                                    'remove',
-                                    'file',
-                                  ),
-                                  message: const Text(
-                                    'Please wait...',
-                                  ),
-                                ),
-                              ).whenComplete(() => _onRefresh());
-                            }
-                          }
-                        },
-                        icon: listData[i]['bookmark'] == "No"
-                            ? const Icon(
-                                Icons.bookmark_outline,
-                              )
-                            : const Icon(
-                                Icons.bookmark,
-                              ),
-                      ),
-                      PopupMenuButton(
-                        icon: const Icon(
-                          Icons.more_vert,
                         ),
-                        elevation: 2,
-                        onSelected: (v) async {
-                          if (listData[i]['tag'] == "folder") {
-                            if (v == 4) {
-                              Get.defaultDialog(
-                                title: "Warning !",
-                                middleText:
-                                    "Are you sure you want to delete this file",
-                                confirm: SizedBox(
-                                  height: 35.h,
-                                  width: Get.width / 3,
-                                  child: ElevatedButton(
-                                    onPressed: () async {
-                                      Get.back();
-                                      await showDialog(
-                                        context: context,
-                                        builder: (context) =>
-                                            FutureProgressDialog(
-                                          ondeleteFilePress(
-                                            listData[i]['folder_id'],
-                                            'folder',
-                                          ),
-                                          message: const Text(
-                                            'Please wait...',
-                                          ),
-                                        ),
-                                      ).whenComplete(() => _onRefresh());
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      primary: AppColors.primaryColor,
-                                    ),
-                                    child: const Text('Yes'),
-                                  ),
-                                ),
-                                cancel: SizedBox(
-                                  height: 35.h,
-                                  width: Get.width / 3,
-                                  child: ElevatedButton(
-                                    onPressed: () {
-                                      Get.back();
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      primary: Colors.grey.shade400,
-                                    ),
-                                    child: const Text('Cancel'),
-                                  ),
-                                ),
-                                radius: 10,
-                              );
-                            } else if (v == 5) {
-                              await showModalBottomSheet(
-                                context: context,
-                                isScrollControlled: true,
-                                shape: const RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.only(
-                                      topLeft: Radius.circular(20),
-                                      topRight: Radius.circular(20)),
-                                ),
-                                builder: (context) {
-                                  return ShareDocumentDialog(
-                                    itemID: listData[i]['folder_id'],
-                                    itemType: 'folder',
-                                  );
-                                },
-                              );
-                            }
-                          } else {
-                            if (v == 4) {
-                              Get.defaultDialog(
-                                title: "Warning !",
-                                middleText:
-                                    "Are you sure you want to delete this file",
-                                confirm: SizedBox(
-                                  height: 35.h,
-                                  width: Get.width / 3,
-                                  child: ElevatedButton(
-                                    onPressed: () async {
-                                      Get.back();
-                                      await showDialog(
-                                        context: context,
-                                        builder: (context) =>
-                                            FutureProgressDialog(
-                                          ondeleteFilePress(
-                                            listData[i]['file_id'],
-                                            'file',
-                                          ),
-                                          message: const Text(
-                                            'Please wait...',
-                                          ),
-                                        ),
-                                      ).whenComplete(() => _onRefresh());
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      primary: AppColors.primaryColor,
-                                    ),
-                                    child: const Text('Yes'),
-                                  ),
-                                ),
-                                cancel: SizedBox(
-                                  height: 35.h,
-                                  width: Get.width / 3,
-                                  child: ElevatedButton(
-                                    onPressed: () {
-                                      Get.back();
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      primary: Colors.grey.shade400,
-                                    ),
-                                    child: const Text('Cancel'),
-                                  ),
-                                ),
-                                radius: 10,
-                              );
-                            } else if (v == 5) {
-                              await showModalBottomSheet(
-                                context: context,
-                                isScrollControlled: true,
-                                shape: const RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.only(
-                                      topLeft: Radius.circular(20),
-                                      topRight: Radius.circular(20)),
-                                ),
-                                builder: (context) {
-                                  return ShareDocumentDialog(
-                                    itemID: listData[i]['file_id'],
-                                    itemType: 'file',
-                                  );
-                                },
-                              );
-                            }
-                          }
-                        },
-                        itemBuilder: (BuildContext context) => <PopupMenuEntry>[
-                          const PopupMenuItem(
-                            value: 4,
-                            child: Text(
-                              'Delete',
-                              style: TextStyle(color: Colors.red),
+                      ),
+                      title: Text(
+                        listData[i]['name'],
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w400,
+                          color: AppColors.darkGreyTextColor,
+                        ),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            listData[i]['created_at'],
+                            maxLines: 1,
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w400,
+                              color: AppColors.primaryColor,
                             ),
                           ),
-                          const PopupMenuItem(
-                            value: 5,
-                            child: Text('Share'),
-                          )
+                          SizedBox(
+                            height: 2.h,
+                          ),
+                          listData[i]['tag'] == "folder"
+                              ? const SizedBox()
+                              : Text(
+                                  listData[i]['remarks'] ?? '',
+                                  maxLines: 2,
+                                  style: TextStyle(
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.lightGreyTextColor,
+                                  ),
+                                ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
+                      trailing: SizedBox(
+                        width: 100,
+                        child: Row(
+                          children: [
+                            IconButton(
+                              onPressed: () async {
+                                if (listData[i]['tag'] == "folder") {
+                                  if (listData[i]['bookmark'] == "No") {
+                                    final resp = await showDialog(
+                                      context: context,
+                                      builder: (context) =>
+                                          FutureProgressDialog(
+                                        onBookMarkButtonPress(
+                                            listData[i]['folder_id'],
+                                            'add',
+                                            'folder'),
+                                        message: const Text(
+                                          'Please wait...',
+                                        ),
+                                      ),
+                                    ).whenComplete(() => _onRefresh());
+                                  } else {
+                                    final resp = await showDialog(
+                                      context: context,
+                                      builder: (context) =>
+                                          FutureProgressDialog(
+                                        onBookMarkButtonPress(
+                                          listData[i]['folder_id'],
+                                          'remove',
+                                          'folder',
+                                        ),
+                                        message: const Text(
+                                          'Please wait...',
+                                        ),
+                                      ),
+                                    ).whenComplete(() => _onRefresh());
+                                  }
+                                } else {
+                                  if (listData[i]['bookmark'] == "No") {
+                                    final resp = await showDialog(
+                                      context: context,
+                                      builder: (context) =>
+                                          FutureProgressDialog(
+                                        onBookMarkButtonPress(
+                                            listData[i]['file_id'],
+                                            'add',
+                                            'file'),
+                                        message: const Text(
+                                          'Please wait...',
+                                        ),
+                                      ),
+                                    ).whenComplete(() => _onRefresh());
+                                  } else {
+                                    final resp = await showDialog(
+                                      context: context,
+                                      builder: (context) =>
+                                          FutureProgressDialog(
+                                        onBookMarkButtonPress(
+                                          listData[i]['file_id'],
+                                          'remove',
+                                          'file',
+                                        ),
+                                        message: const Text(
+                                          'Please wait...',
+                                        ),
+                                      ),
+                                    ).whenComplete(() => _onRefresh());
+                                  }
+                                }
+                              },
+                              icon: listData[i]['bookmark'] == "No"
+                                  ? const Icon(
+                                      Icons.bookmark_outline,
+                                    )
+                                  : const Icon(
+                                      Icons.bookmark,
+                                    ),
+                            ),
+                            PopupMenuButton(
+                              icon: const Icon(
+                                Icons.more_vert,
+                              ),
+                              elevation: 2,
+                              onSelected: (v) async {
+                                if (listData[i]['tag'] == "folder") {
+                                  if (v == 4) {
+                                    Get.defaultDialog(
+                                      title: "Warning !",
+                                      middleText:
+                                          "Are you sure you want to delete this file",
+                                      confirm: SizedBox(
+                                        height: 35.h,
+                                        width: Get.width / 3,
+                                        child: ElevatedButton(
+                                          onPressed: () async {
+                                            Get.back();
+                                            await showDialog(
+                                              context: context,
+                                              builder: (context) =>
+                                                  FutureProgressDialog(
+                                                ondeleteFilePress(
+                                                  listData[i]['folder_id'],
+                                                  'folder',
+                                                ),
+                                                message: const Text(
+                                                  'Please wait...',
+                                                ),
+                                              ),
+                                            ).whenComplete(() => _onRefresh());
+                                          },
+                                          style: ElevatedButton.styleFrom(
+                                            primary: AppColors.primaryColor,
+                                          ),
+                                          child: const Text('Yes'),
+                                        ),
+                                      ),
+                                      cancel: SizedBox(
+                                        height: 35.h,
+                                        width: Get.width / 3,
+                                        child: ElevatedButton(
+                                          onPressed: () {
+                                            Get.back();
+                                          },
+                                          style: ElevatedButton.styleFrom(
+                                            primary: Colors.grey.shade400,
+                                          ),
+                                          child: const Text('Cancel'),
+                                        ),
+                                      ),
+                                      radius: 10,
+                                    );
+                                  } else if (v == 5) {
+                                    await showModalBottomSheet(
+                                      context: context,
+                                      isScrollControlled: true,
+                                      shape: const RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.only(
+                                            topLeft: Radius.circular(20),
+                                            topRight: Radius.circular(20)),
+                                      ),
+                                      builder: (context) {
+                                        return ShareDocumentDialog(
+                                          itemID: listData[i]['folder_id'],
+                                          itemType: 'folder',
+                                        );
+                                      },
+                                    );
+                                  }
+                                } else {
+                                  if (v == 4) {
+                                    Get.defaultDialog(
+                                      title: "Warning !",
+                                      middleText:
+                                          "Are you sure you want to delete this file",
+                                      confirm: SizedBox(
+                                        height: 35.h,
+                                        width: Get.width / 3,
+                                        child: ElevatedButton(
+                                          onPressed: () async {
+                                            Get.back();
+                                            await showDialog(
+                                              context: context,
+                                              builder: (context) =>
+                                                  FutureProgressDialog(
+                                                ondeleteFilePress(
+                                                  listData[i]['file_id'],
+                                                  'file',
+                                                ),
+                                                message: const Text(
+                                                  'Please wait...',
+                                                ),
+                                              ),
+                                            ).whenComplete(() => _onRefresh());
+                                          },
+                                          style: ElevatedButton.styleFrom(
+                                            primary: AppColors.primaryColor,
+                                          ),
+                                          child: const Text('Yes'),
+                                        ),
+                                      ),
+                                      cancel: SizedBox(
+                                        height: 35.h,
+                                        width: Get.width / 3,
+                                        child: ElevatedButton(
+                                          onPressed: () {
+                                            Get.back();
+                                          },
+                                          style: ElevatedButton.styleFrom(
+                                            primary: Colors.grey.shade400,
+                                          ),
+                                          child: const Text('Cancel'),
+                                        ),
+                                      ),
+                                      radius: 10,
+                                    );
+                                  } else if (v == 5) {
+                                    await showModalBottomSheet(
+                                      context: context,
+                                      isScrollControlled: true,
+                                      shape: const RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.only(
+                                            topLeft: Radius.circular(20),
+                                            topRight: Radius.circular(20)),
+                                      ),
+                                      builder: (context) {
+                                        return ShareDocumentDialog(
+                                          itemID: listData[i]['file_id'],
+                                          itemType: 'file',
+                                        );
+                                      },
+                                    );
+                                  }
+                                }
+                              },
+                              itemBuilder: (BuildContext context) =>
+                                  <PopupMenuEntry>[
+                                const PopupMenuItem(
+                                  value: 4,
+                                  child: Text(
+                                    'Delete',
+                                    style: TextStyle(color: Colors.red),
+                                  ),
+                                ),
+                                const PopupMenuItem(
+                                  value: 5,
+                                  child: Text('Share'),
+                                )
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
-            );
-          },
-        ),
-      ),
+            ),
     );
   }
 }
