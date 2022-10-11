@@ -1,14 +1,16 @@
+import 'package:docuhealth/controllers/daily_reminder_controller.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:future_progress_dialog/future_progress_dialog.dart';
-import 'package:intl/intl.dart';
 import 'package:docuhealth/contstants/app_colors.dart';
 import 'package:docuhealth/screen/reminder/add_reminder_scrren.dart';
-import 'package:docuhealth/services/base_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:future_progress_dialog/future_progress_dialog.dart';
 import 'package:get/get.dart';
+import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
+
+import '../../model/daily_reminders/reminder_data.dart';
 
 class DailyReminder extends StatefulWidget {
   final String title;
@@ -19,64 +21,29 @@ class DailyReminder extends StatefulWidget {
 }
 
 class _DailyReminderState extends State<DailyReminder> {
-  List allReminders = [];
-  List datewiseReminders = [];
-  bool isLoading = true;
   DateTime selectedDate = DateTime.now();
   bool snooz = false;
 
-  getDailyReminder() async {
-    final response = await BaseClient().get('reminders', true);
-    if (response['success']) {
-      allReminders = response['data'];
-    } else {
-      allReminders = [];
-    }
-    isLoading = false;
-    setState(() {});
-  }
-
-  getDateWiseReminder() async {
-    isLoading = true;
-    setState(() {});
-    final response = await BaseClient().get(
-        'reminders?date=${DateFormat('dd-MM-yyyy').format(selectedDate)}',
-        true);
-    if (response['success']) {
-      datewiseReminders = response['data'];
-    } else {
-      datewiseReminders = [];
-    }
-    isLoading = false;
-    setState(() {});
-  }
-
-  onSwitchPress(int id, bool status) async {
-    final response = await BaseClient()
-        .post('reminders/status', {"id": "$id", "status": status}, true);
-    print(response);
-    if (response['success']) {
-      getDailyReminder();
-    }
-  }
-
-  onDeleteButtonPress(int id) async {
-    final response = await BaseClient().get('reminders/delete/$id', true);
-    print(response);
-    if (response['success']) {
-      getDailyReminder();
-    }
-  }
-
   @override
   void initState() {
-    // TODO: implement initState
-    getDailyReminder();
+    Future.delayed(Duration.zero, () {
+      Provider.of<DailyReminderController>(context, listen: false)
+          .getDailyReminder();
+      Provider.of<DailyReminderController>(context, listen: false)
+          .getDateWiseReminder(selectedDate);
+    });
+
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
+    DailyReminderController dailyReminderController =
+        Provider.of<DailyReminderController>(context);
+    List<ReminderData> allReminders = dailyReminderController.allReminders;
+    List<ReminderData> datewiseReminders =
+        dailyReminderController.datewiseReminders;
+
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -132,11 +99,21 @@ class _DailyReminderState extends State<DailyReminder> {
         floatingActionButton: FloatingActionButton(
           backgroundColor: AppColors.primaryColor,
           onPressed: () {
-            Get.to(const NewAddedReminderScreen());
+            Get.to(const NewAddedReminderScreen())!.whenComplete(
+              () => Future.delayed(
+                Duration.zero,
+                () {
+                  Provider.of<DailyReminderController>(context, listen: false)
+                      .getDailyReminder();
+                  Provider.of<DailyReminderController>(context, listen: false)
+                      .getDateWiseReminder(selectedDate);
+                },
+              ),
+            );
           },
           child: const Icon(Icons.add),
         ),
-        body: isLoading
+        body: dailyReminderController.isLoading
             ? const Center(
                 child: CircularProgressIndicator(),
               )
@@ -161,8 +138,8 @@ class _DailyReminderState extends State<DailyReminder> {
                             focusedDay: selectedDate,
                             onDaySelected: (fromDate, toDate) {
                               selectedDate = fromDate;
-                              getDateWiseReminder();
-                              setState(() {});
+                              dailyReminderController
+                                  .getDateWiseReminder(selectedDate);
                             },
                             calendarStyle: CalendarStyle(
                                 rangeHighlightColor: AppColors.primaryColor),
@@ -175,101 +152,121 @@ class _DailyReminderState extends State<DailyReminder> {
                             ),
                           ),
                         ),
-                        ListView.builder(
-                          shrinkWrap: true,
-                          itemCount: datewiseReminders.length,
-                          itemBuilder: (_, i) {
-                            return InkWell(
-                              onTap: () {},
-                              child: Card(
-                                color: Colors.grey.shade100,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20.r),
-                                ),
-                                margin: EdgeInsets.only(
-                                    left: 10.w, right: 10.w, top: 10.h),
-                                child: Padding(
-                                  padding: EdgeInsets.all(15.r),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        height: 50.h,
-                                        width: 50.w,
-                                        decoration: BoxDecoration(
-                                          borderRadius:
-                                              BorderRadius.circular(15.r),
-                                          image: const DecorationImage(
-                                            image: AssetImage(
-                                              'assets/icons/remainder-icon.png',
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Padding(
-                                          padding: EdgeInsets.only(left: 10.w),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                "${datewiseReminders[i]['time']}",
-                                                style: TextStyle(
-                                                  fontSize: 18.sp,
-                                                  fontWeight: FontWeight.w400,
-                                                  color: AppColors.primaryColor,
-                                                ),
-                                              ),
-                                              SizedBox(
-                                                height: 10.h,
-                                              ),
-                                              Text(
-                                                "${datewiseReminders[i]['name']} (${datewiseReminders[i]['event_type']})",
-                                                style: TextStyle(
-                                                  fontSize: 12.sp,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: 10.w,
-                                          vertical: 2.h,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: !allReminders[i]['status']
-                                              ? Colors.red
-                                              : AppColors.primaryColor,
-                                          borderRadius:
-                                              BorderRadius.circular(5.r),
-                                        ),
-                                        child: allReminders[i]['status']
-                                            ? Text(
-                                                "Running",
-                                                style: TextStyle(
-                                                  color:
-                                                      AppColors.whiteTextColor,
-                                                ),
-                                              )
-                                            : Text(
-                                                "Closed",
-                                                style: TextStyle(
-                                                  color:
-                                                      AppColors.whiteTextColor,
-                                                ),
-                                              ),
-                                      ),
-                                    ],
+                        datewiseReminders.isEmpty
+                            ? const Expanded(
+                                child: Center(
+                                  child: Text(
+                                    "No data found",
+                                    style: TextStyle(
+                                      fontSize: 20.0,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey,
+                                    ),
                                   ),
                                 ),
+                              )
+                            : ListView.builder(
+                                shrinkWrap: true,
+                                itemCount: datewiseReminders.length,
+                                itemBuilder: (_, i) {
+                                  return InkWell(
+                                    onTap: () {},
+                                    child: Card(
+                                      color: Colors.grey.shade100,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(20.r),
+                                      ),
+                                      margin: EdgeInsets.only(
+                                          left: 10.w, right: 10.w, top: 10.h),
+                                      child: Padding(
+                                        padding: EdgeInsets.all(15.r),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              height: 50.h,
+                                              width: 50.w,
+                                              decoration: BoxDecoration(
+                                                borderRadius:
+                                                    BorderRadius.circular(15.r),
+                                                image: const DecorationImage(
+                                                  image: AssetImage(
+                                                    'assets/icons/remainder-icon.png',
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            Expanded(
+                                              child: Padding(
+                                                padding:
+                                                    EdgeInsets.only(left: 10.w),
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    Text(
+                                                      "${datewiseReminders[i].time}",
+                                                      style: TextStyle(
+                                                        fontSize: 18.sp,
+                                                        fontWeight:
+                                                            FontWeight.w400,
+                                                        color: AppColors
+                                                            .primaryColor,
+                                                      ),
+                                                    ),
+                                                    SizedBox(
+                                                      height: 10.h,
+                                                    ),
+                                                    Text(
+                                                      "${datewiseReminders[i].name} (${datewiseReminders[i].eventType})",
+                                                      style: TextStyle(
+                                                        fontSize: 12.sp,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                            Container(
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: 10.w,
+                                                vertical: 2.h,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: !datewiseReminders[i]
+                                                        .status!
+                                                    ? Colors.red
+                                                    : AppColors.primaryColor,
+                                                borderRadius:
+                                                    BorderRadius.circular(5.r),
+                                              ),
+                                              child:
+                                                  datewiseReminders[i].status!
+                                                      ? Text(
+                                                          "Running",
+                                                          style: TextStyle(
+                                                            color: AppColors
+                                                                .whiteTextColor,
+                                                          ),
+                                                        )
+                                                      : Text(
+                                                          "Closed",
+                                                          style: TextStyle(
+                                                            color: AppColors
+                                                                .whiteTextColor,
+                                                          ),
+                                                        ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
-                            );
-                          },
-                        ),
                       ],
                     ),
                   ),
@@ -277,115 +274,138 @@ class _DailyReminderState extends State<DailyReminder> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        ListView.builder(
-                          shrinkWrap: true,
-                          itemCount: allReminders.length,
-                          itemBuilder: (_, i) {
-                            return InkWell(
-                              onTap: () {},
-                              child: Card(
-                                color: Colors.grey.shade100,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20.r),
-                                ),
-                                margin: EdgeInsets.only(
-                                    left: 10.w, right: 10.w, top: 10.h),
-                                child: Padding(
-                                  padding: EdgeInsets.all(15.r),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        height: 50.h,
-                                        width: 50.w,
-                                        decoration: BoxDecoration(
-                                          borderRadius:
-                                              BorderRadius.circular(15.r),
-                                          image: const DecorationImage(
-                                            image: AssetImage(
-                                              'assets/icons/remainder-icon.png',
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Padding(
-                                          padding: EdgeInsets.only(left: 10.w),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                "${allReminders[i]['time']}",
-                                                style: TextStyle(
-                                                  fontSize: 18.sp,
-                                                  fontWeight: FontWeight.w400,
-                                                  color: AppColors.primaryColor,
-                                                ),
-                                              ),
-                                              SizedBox(
-                                                height: 10.h,
-                                              ),
-                                              Text(
-                                                "${allReminders[i]['name']} (${allReminders[i]['event_type']})",
-                                                style: TextStyle(
-                                                  fontSize: 12.sp,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                      Row(
-                                        children: [
-                                          CupertinoSwitch(
-                                            activeColor: AppColors.primaryColor,
-                                            value: allReminders[i]['status'],
-                                            onChanged: (bool value) {
-                                              snooz = value;
-                                              showDialog(
-                                                context: context,
-                                                builder: (context) =>
-                                                    FutureProgressDialog(
-                                                  onSwitchPress(
-                                                      allReminders[i]['id'],
-                                                      !allReminders[i]
-                                                          ['status']),
-                                                  message: const Text(
-                                                      'Deleting please wait ...'),
-                                                ),
-                                              );
-                                              setState(() {});
-                                            },
-                                          ),
-                                          IconButton(
-                                            onPressed: () {
-                                              showDialog(
-                                                context: context,
-                                                builder: (context) =>
-                                                    FutureProgressDialog(
-                                                  onDeleteButtonPress(
-                                                      allReminders[i]['id']),
-                                                  message: const Text(
-                                                      'Deleting please wait ...'),
-                                                ),
-                                              );
-                                            },
-                                            icon: const Icon(
-                                              Icons.delete,
-                                              color: Colors.red,
-                                            ),
-                                          )
-                                        ],
-                                      )
-                                    ],
+                        allReminders.isEmpty
+                            ? const Expanded(
+                                child: Center(
+                                  child: Text(
+                                    "No data found",
+                                    style: TextStyle(
+                                      fontSize: 20.0,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey,
+                                    ),
                                   ),
                                 ),
+                              )
+                            : ListView.builder(
+                                shrinkWrap: true,
+                                itemCount: allReminders.length,
+                                itemBuilder: (_, i) {
+                                  return InkWell(
+                                    onTap: () {},
+                                    child: Card(
+                                      color: Colors.grey.shade100,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(20.r),
+                                      ),
+                                      margin: EdgeInsets.only(
+                                          left: 10.w, right: 10.w, top: 10.h),
+                                      child: Padding(
+                                        padding: EdgeInsets.all(15.r),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              height: 50.h,
+                                              width: 50.w,
+                                              decoration: BoxDecoration(
+                                                borderRadius:
+                                                    BorderRadius.circular(15.r),
+                                                image: const DecorationImage(
+                                                  image: AssetImage(
+                                                    'assets/icons/remainder-icon.png',
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            Expanded(
+                                              child: Padding(
+                                                padding:
+                                                    EdgeInsets.only(left: 10.w),
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    Text(
+                                                      "${allReminders[i].time}",
+                                                      style: TextStyle(
+                                                        fontSize: 18.sp,
+                                                        fontWeight:
+                                                            FontWeight.w400,
+                                                        color: AppColors
+                                                            .primaryColor,
+                                                      ),
+                                                    ),
+                                                    SizedBox(
+                                                      height: 10.h,
+                                                    ),
+                                                    Text(
+                                                      "${allReminders[i].name} (${allReminders[i].eventType})",
+                                                      style: TextStyle(
+                                                        fontSize: 12.sp,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                            Row(
+                                              children: [
+                                                CupertinoSwitch(
+                                                  activeColor:
+                                                      AppColors.primaryColor,
+                                                  value:
+                                                      allReminders[i].status!,
+                                                  onChanged: (bool value) {
+                                                    snooz = value;
+                                                    showDialog(
+                                                      context: context,
+                                                      builder: (context) =>
+                                                          FutureProgressDialog(
+                                                        dailyReminderController
+                                                            .onSwitchPress(
+                                                                allReminders[i]
+                                                                    .id!,
+                                                                !allReminders[i]
+                                                                    .status!),
+                                                        message: const Text(
+                                                            'Deleting please wait ...'),
+                                                      ),
+                                                    );
+                                                  },
+                                                ),
+                                                IconButton(
+                                                  onPressed: () {
+                                                    showDialog(
+                                                      context: context,
+                                                      builder: (context) =>
+                                                          FutureProgressDialog(
+                                                        dailyReminderController
+                                                            .onDeleteButtonPress(
+                                                                allReminders[i]
+                                                                    .id!),
+                                                        message: const Text(
+                                                            'Deleting please wait ...'),
+                                                      ),
+                                                    );
+                                                  },
+                                                  icon: const Icon(
+                                                    Icons.delete,
+                                                    color: Colors.red,
+                                                  ),
+                                                )
+                                              ],
+                                            )
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
-                            );
-                          },
-                        ),
                       ],
                     ),
                   ),

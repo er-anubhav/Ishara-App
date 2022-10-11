@@ -8,7 +8,9 @@ import '../../theme.dart';
 
 class CreateFolderDialog extends StatefulWidget {
   final String? categoryName;
-  const CreateFolderDialog({Key? key, this.categoryName}) : super(key: key);
+  final bool? isShowDropdown;
+  const CreateFolderDialog({Key? key, this.categoryName, this.isShowDropdown})
+      : super(key: key);
 
   @override
   _CreateFolderDialogState createState() => _CreateFolderDialogState();
@@ -117,28 +119,30 @@ class _CreateFolderDialogState extends State<CreateFolderDialog> {
             const SizedBox(
               height: 15,
             ),
-            DropdownButtonFormField(
-              decoration: AppTheme.defaultInputFieldDecoration(
-                  "Select category", Icons.category),
-              value: dropdownvalue,
-              validator: (v) {
-                if (dropdownvalue == null) {
-                  return "Category is required";
-                }
-              },
-              icon: const Icon(Icons.keyboard_arrow_down),
-              items: items.map((items) {
-                return DropdownMenuItem(
-                  value: items['category_name'],
-                  child: Text(items['title']!),
-                );
-              }).toList(),
-              onChanged: (String? newValue) {
-                setState(() {
-                  dropdownvalue = newValue!;
-                });
-              },
-            ),
+            widget.isShowDropdown == null || widget.isShowDropdown!
+                ? DropdownButtonFormField(
+                    decoration: AppTheme.defaultInputFieldDecoration(
+                        "Select category", Icons.category),
+                    value: dropdownvalue,
+                    validator: (v) {
+                      if (dropdownvalue == null) {
+                        return "Category is required";
+                      }
+                    },
+                    icon: const Icon(Icons.keyboard_arrow_down),
+                    items: items.map((items) {
+                      return DropdownMenuItem(
+                        value: items['category_name'],
+                        child: Text(items['title']!),
+                      );
+                    }).toList(),
+                    onChanged: (String? newValue) {
+                      setState(() {
+                        dropdownvalue = newValue!;
+                      });
+                    },
+                  )
+                : const SizedBox(),
             const SizedBox(
               height: 20,
             ),

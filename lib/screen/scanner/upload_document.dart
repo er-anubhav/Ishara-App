@@ -244,7 +244,7 @@ class _UploadDcoumnetScreenState extends State<UploadDcoumnetScreen> {
                                           categoryName: widget.selectedCategory,
                                         );
                                       },
-                                    );
+                                    ).whenComplete(() => getFolderList());
                                   },
                                   style: ElevatedButton.styleFrom(
                                     primary: AppColors.primaryColor,

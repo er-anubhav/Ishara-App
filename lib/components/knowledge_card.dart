@@ -101,13 +101,13 @@ class _KnowledgeCardState extends State<KnowledgeCard> {
                           style: TextStyle(fontSize: 11.sp),
                         ),
                       ]),
-                      Row(children: [
-                        Icon(
-                          Icons.share,
-                          color: AppColors.primaryColor,
-                          size: 20,
-                        ),
-                      ])
+                      // Row(children: [
+                      //   Icon(
+                      //     Icons.share,
+                      //     color: AppColors.primaryColor,
+                      //     size: 20,
+                      //   ),
+                      // ])
                     ],
                   ),
                 )

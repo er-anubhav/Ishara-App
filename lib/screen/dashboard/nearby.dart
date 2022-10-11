@@ -1,4 +1,5 @@
 // import 'package:docuhealth/screen/nearby/nearby_doctor.dart';
+import 'package:docuhealth/screen/search/search_screen.dart';
 import 'package:docuhealth/services/base_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -63,30 +64,33 @@ class _NearByScreenState extends State<NearByScreen> {
             child: Row(
               children: [
                 Expanded(
-                  child: TextFormField(
-                    onChanged: ((value) {
-                      // searchKey = value;
-                      // _onRefresh();
-                    }),
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: AppColors.whitebgColor,
-                      prefixIcon: Icon(
-                        Icons.search,
-                        color: AppColors.selectedIconColor,
-                      ),
-                      hintText: "Search",
-                      hintStyle: TextStyle(
-                        fontSize: 18.sp,
-                        color: AppColors.lightGreyTextColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      contentPadding: EdgeInsets.symmetric(
-                          horizontal: 20.w, vertical: 10.h),
-                      border: OutlineInputBorder(
-                        borderSide: BorderSide(
-                            color: AppColors.selectedIconColor, width: 2.w),
-                        borderRadius: BorderRadius.circular(50.r),
+                  child: InkWell(
+                    onTap: () {
+                      Get.to(const SearchScreen());
+                    },
+                    child: IgnorePointer(
+                      child: TextFormField(
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: AppColors.whitebgColor,
+                          prefixIcon: Icon(
+                            Icons.search,
+                            color: AppColors.selectedIconColor,
+                          ),
+                          hintText: "Search",
+                          hintStyle: TextStyle(
+                            fontSize: 18.sp,
+                            color: AppColors.lightGreyTextColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: 20.w, vertical: 10.h),
+                          border: OutlineInputBorder(
+                            borderSide: BorderSide(
+                                color: AppColors.selectedIconColor, width: 2.w),
+                            borderRadius: BorderRadius.circular(50.r),
+                          ),
+                        ),
                       ),
                     ),
                   ),

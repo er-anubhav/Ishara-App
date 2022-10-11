@@ -1,5 +1,6 @@
 import 'package:docuhealth/services/base_client.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:future_progress_dialog/future_progress_dialog.dart';
 import 'package:get/get.dart';
@@ -101,6 +102,9 @@ class _AddNewFamilyMemberState extends State<AddNewFamilyMember> {
                           return "Name is required";
                         }
                       },
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp("[ a-zA-Z]")),
+                      ],
                     ),
                     SizedBox(
                       height: 15.h,

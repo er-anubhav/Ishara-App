@@ -430,13 +430,6 @@ class _SearchScreenState extends State<SearchScreen> {
                 color: AppColors.primaryColor,
               ),
             ),
-            Text(
-              "Tagline",
-              style: TextStyle(
-                fontSize: 12.sp,
-                color: AppColors.primaryColor,
-              ),
-            ),
           ],
         ),
         iconTheme: IconThemeData(
@@ -454,6 +447,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     onChanged: ((value) {
                       getSearchData(value);
                     }),
+                    enabled: true,
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: AppColors.whitebgColor,

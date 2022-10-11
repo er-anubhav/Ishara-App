@@ -3,6 +3,7 @@ import 'package:docuhealth/screen/user/select_user_scrren.dart';
 import 'package:docuhealth/services/base_client.dart';
 import 'package:docuhealth/theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:future_progress_dialog/future_progress_dialog.dart';
 import 'package:get/get.dart';
@@ -112,6 +113,10 @@ class _UserRegistrationScreenState extends State<UserRegistrationScreen> {
                             return "Name is required";
                           }
                         },
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                              RegExp("[ a-zA-Z]")),
+                        ],
                         decoration: AppTheme.defaultInputFieldDecoration(
                           "Enter your name",
                           Icons.person,
@@ -136,6 +141,10 @@ class _UserRegistrationScreenState extends State<UserRegistrationScreen> {
                           return "Email is required";
                         }
                       },
+                      // inputFormatters: [
+                      //   FilteringTextInputFormatter.allow(RegExp(
+                      //       r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+")),
+                      // ],
                       decoration: AppTheme.defaultInputFieldDecoration(
                         "Enter your email",
                         Icons.email,

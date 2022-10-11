@@ -72,7 +72,7 @@ class _PharmacyRecordState extends State<BookMarksScreen>
       return resp['data']['data'];
     }
     isLoading = false;
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   _onRefresh() async {
@@ -256,21 +256,21 @@ class _PharmacyRecordState extends State<BookMarksScreen>
           ),
         ),
       ),
-      body: listData.isEmpty
-          ? const Center(
-              child: Text(
-                "Data not found",
-                style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.w500),
-              ),
-            )
-          : SmartRefresher(
-              enablePullUp: true,
-              enablePullDown: true,
-              header: const WaterDropHeader(),
-              controller: refreshController,
-              onRefresh: _onRefresh,
-              onLoading: _onLoading,
-              child: ListView.builder(
+      body: SmartRefresher(
+        enablePullUp: true,
+        enablePullDown: true,
+        header: const WaterDropHeader(),
+        controller: refreshController,
+        onRefresh: _onRefresh,
+        onLoading: _onLoading,
+        child: listData.isEmpty
+            ? const Center(
+                child: Text(
+                  "Data not found",
+                  style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.w500),
+                ),
+              )
+            : ListView.builder(
                 shrinkWrap: true,
                 itemCount: listData.length,
                 itemBuilder: (_, i) {
@@ -605,7 +605,7 @@ class _PharmacyRecordState extends State<BookMarksScreen>
                   );
                 },
               ),
-            ),
+      ),
     );
   }
 }

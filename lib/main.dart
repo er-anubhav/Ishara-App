@@ -27,7 +27,7 @@ void main() async {
     WidgetsFlutterBinding.ensureInitialized();
     cameras = await availableCameras();
   } on CameraException catch (e) {
-    // print('Error in fetching the cameras: $e');
+    print('Error in fetching the cameras: $e');
   }
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
     statusBarColor: AppColors.whitebgColor,

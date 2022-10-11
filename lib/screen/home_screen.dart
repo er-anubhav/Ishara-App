@@ -49,7 +49,7 @@ class _HomePageState extends State<HomePage>
     super.dispose();
   }
 
-  Future _onWillPop() async {}
+  // Future _onWillPop() async {}
 
   @override
   void initState() {
@@ -87,86 +87,84 @@ class _HomePageState extends State<HomePage>
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async => await _onWillPop(),
-      child: Scaffold(
-        body: PageView(
-          controller: _pageController,
-          allowImplicitScrolling: false,
-          physics: const NeverScrollableScrollPhysics(),
-          children: const <Widget>[
-            Dashboard(),
-            NearByScreen(),
-            KnowledgeScreen(),
-            ProfileScreen(),
-          ],
-        ),
-        floatingActionButton: ScaleTransition(
-          scale: animation,
-          child: FloatingActionButton(
-            elevation: 8,
-            backgroundColor: AppColors.primaryColor,
-            child: Icon(
-              Icons.document_scanner,
-              size: 40.r,
-              color: AppColors.whitebgColor,
-            ),
-            onPressed: () {
-              Get.to(const CameraScreen(
-                appBarTitle: '',
-              ));
-            },
-          ),
-        ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-        bottomNavigationBar: AnimatedBottomNavigationBar.builder(
-            itemCount: iconList.length,
-            tabBuilder: (int index, bool isActive) {
-              final color = isActive
-                  ? AppColors.primaryColor
-                  : AppColors.lightGreyTextColor;
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    iconList[index]['icon'],
-                    size: 24.r,
-                    color: color,
-                  ),
-                  SizedBox(height: 4.h),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 5.w),
-                    child: Text(
-                      iconList[index]['title'],
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      style: TextStyle(
-                        color: color,
-                        fontSize: 11.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  )
-                ],
-              );
-            },
-            backgroundColor: AppColors.whitebgColor,
-            activeIndex: _currentIndex,
-            splashColor: Colors.yellow,
-            notchAndCornersAnimation: animation,
-            splashSpeedInMilliseconds: 300,
-            notchSmoothness: NotchSmoothness.defaultEdge,
-            gapLocation: GapLocation.center,
-            onTap: (index) {
-              if (mounted) {
-                setState(() {
-                  _currentIndex = index;
-                  onTabTapped(index);
-                });
-              }
-            }),
+    
+    return Scaffold(
+      body: PageView(
+        controller: _pageController,
+        allowImplicitScrolling: false,
+        physics: const NeverScrollableScrollPhysics(),
+        children: const <Widget>[
+          Dashboard(),
+          NearByScreen(),
+          KnowledgeScreen(),
+          ProfileScreen(),
+        ],
       ),
+      floatingActionButton: ScaleTransition(
+        scale: animation,
+        child: FloatingActionButton(
+          elevation: 8,
+          backgroundColor: AppColors.primaryColor,
+          child: Icon(
+            Icons.document_scanner,
+            size: 40.r,
+            color: AppColors.whitebgColor,
+          ),
+          onPressed: () {
+            Get.to(const CameraScreen(
+              appBarTitle: '',
+            ));
+          },
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar: AnimatedBottomNavigationBar.builder(
+          itemCount: iconList.length,
+          tabBuilder: (int index, bool isActive) {
+            final color = isActive
+                ? AppColors.primaryColor
+                : AppColors.lightGreyTextColor;
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  iconList[index]['icon'],
+                  size: 24.r,
+                  color: color,
+                ),
+                SizedBox(height: 4.h),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 5.w),
+                  child: Text(
+                    iconList[index]['title'],
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 11.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                )
+              ],
+            );
+          },
+          backgroundColor: AppColors.whitebgColor,
+          activeIndex: _currentIndex,
+          splashColor: Colors.yellow,
+          notchAndCornersAnimation: animation,
+          splashSpeedInMilliseconds: 300,
+          notchSmoothness: NotchSmoothness.defaultEdge,
+          gapLocation: GapLocation.center,
+          onTap: (index) {
+            if (mounted) {
+              setState(() {
+                _currentIndex = index;
+                onTabTapped(index);
+              });
+            }
+          }),
     );
   }
 }

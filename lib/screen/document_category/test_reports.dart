@@ -12,7 +12,7 @@ import 'package:pull_to_refresh/pull_to_refresh.dart';
 import '../../components/image_preview_screen.dart';
 import '../../components/pdf_preview.dart';
 import '../../contstants/app_colors.dart';
-import '../../main.dart';
+import '../home_screen.dart';
 import '../scanner/camera_screen.dart';
 import '../folders/create_folder_dialog.dart';
 
@@ -219,6 +219,12 @@ class _PharmacyRecordState extends State<TestReports>
           statusBarIconBrightness: Brightness.light,
         ),
         backgroundColor: AppColors.primaryColor,
+        leading: IconButton(
+          onPressed: () {
+            Get.offAll(const HomePage(currentIndex: 1));
+          },
+          icon: const Icon(Icons.arrow_back),
+        ),
         bottom: PreferredSize(
           child: Padding(
             padding: EdgeInsets.all(10.r),
@@ -334,6 +340,7 @@ class _PharmacyRecordState extends State<TestReports>
                         builder: (context) {
                           return CreateFolderDialog(
                             categoryName: widget.categoryName,
+                            isShowDropdown: false,
                           );
                         },
                       ).whenComplete(() => _onRefresh());
@@ -417,7 +424,7 @@ class _PharmacyRecordState extends State<TestReports>
                       onTap: () {
                         if (listData[i]['tag'] == "folder") {
                           Get.to(FilesScreen(
-                            operationType: "",
+                            operationType: widget.operationType,
                             redirectTo: widget.redirectTo,
                             appBarTitle: listData[i]['name'],
                             folderId: listData[i]['id'],
@@ -879,32 +886,55 @@ class _PharmacyRecordState extends State<TestReports>
                                   }
                                 }
                               },
-                              itemBuilder: (BuildContext context) =>
-                                  <PopupMenuEntry>[
-                                const PopupMenuItem(
-                                  value: 1,
-                                  child: Text('Copy'),
-                                ),
-                                const PopupMenuItem(
-                                  value: 4,
-                                  child: Text(
-                                    'Delete',
-                                    style: TextStyle(color: Colors.red),
-                                  ),
-                                ),
-                                const PopupMenuItem(
-                                  value: 3,
-                                  child: Text('Move'),
-                                ),
-                                const PopupMenuItem(
-                                  value: 2,
-                                  child: Text('Rename'),
-                                ),
-                                const PopupMenuItem(
-                                  value: 5,
-                                  child: Text('Share'),
-                                )
-                              ],
+                              itemBuilder: (BuildContext context) => listData[i]
+                                          ['tag'] ==
+                                      "folder"
+                                  ? <PopupMenuEntry>[
+                                      const PopupMenuItem(
+                                        value: 4,
+                                        child: Text(
+                                          'Delete',
+                                          style: TextStyle(color: Colors.red),
+                                        ),
+                                      ),
+                                      const PopupMenuItem(
+                                        value: 3,
+                                        child: Text('Move'),
+                                      ),
+                                      const PopupMenuItem(
+                                        value: 2,
+                                        child: Text('Rename'),
+                                      ),
+                                      const PopupMenuItem(
+                                        value: 5,
+                                        child: Text('Share'),
+                                      )
+                                    ]
+                                  : <PopupMenuEntry>[
+                                      const PopupMenuItem(
+                                        value: 1,
+                                        child: Text('Copy'),
+                                      ),
+                                      const PopupMenuItem(
+                                        value: 4,
+                                        child: Text(
+                                          'Delete',
+                                          style: TextStyle(color: Colors.red),
+                                        ),
+                                      ),
+                                      const PopupMenuItem(
+                                        value: 3,
+                                        child: Text('Move'),
+                                      ),
+                                      const PopupMenuItem(
+                                        value: 2,
+                                        child: Text('Rename'),
+                                      ),
+                                      const PopupMenuItem(
+                                        value: 5,
+                                        child: Text('Share'),
+                                      )
+                                    ],
                             ),
                           ],
                         ),

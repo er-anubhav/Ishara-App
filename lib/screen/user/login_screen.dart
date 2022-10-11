@@ -18,7 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   List<Widget> buildPageIndicator() {
     List<Widget> list = [];
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < 5; i++) {
       list.add(i == currentPage ? indicator(true) : indicator(false));
     }
     return list;
@@ -49,7 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   )
           ],
           shape: BoxShape.circle,
-          color: isActive ? const Color(0XFF6BC4C9) : const Color(0XFFEAEAEA),
+          color: isActive ? const Color(0XFF6BC4C9) : Colors.white,
         ),
       ),
     );
@@ -65,24 +65,26 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       extendBody: true,
       extendBodyBehindAppBar: true,
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: double.infinity,
-              height: 471.h,
-              decoration: BoxDecoration(
-                color: AppColors.primaryColor,
-              ),
-              child: Column(
-                children: [
-                  SizedBox(
-                    height: 20.h,
-                  ),
-                  SizedBox(
-                    width: 375.w,
-                    child: Padding(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: double.infinity,
+                height: 500.h,
+                decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [
+                    AppColors.primaryColor,
+                    const Color(0xffB2FFE1),
+                  ],
+                )),
+                child: Column(
+                  children: [
+                    Padding(
                       padding: EdgeInsets.symmetric(
                           horizontal: 30.w, vertical: 20.h),
                       child: Text(
@@ -95,125 +97,279 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
-                  ),
-                  Expanded(
-                    child: PageView(
-                      onPageChanged: (int page) {
-                        setState(() {
-                          currentPage = page;
-                        });
-                      },
-                      controller: controller,
-                      children: <Widget>[
-                        Container(
-                          margin: EdgeInsets.all(40.r),
-                          child: Image.asset(
-                            "assets/images/login-image.png",
-                          ),
-                        ),
-                        Container(
-                          margin: EdgeInsets.all(40.r),
-                          child: Image.asset(
-                            "assets/images/login-image.png",
-                          ),
-                        ),
-                        Container(
-                          margin: EdgeInsets.all(40.r),
-                          child: Image.asset(
-                            "assets/images/login-image.png",
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.all(25.r),
-                    child: Row(
-                      children: buildPageIndicator(),
-                    ),
-                  )
-                ],
-              ),
-            ),
-            Container(
-              padding: EdgeInsets.only(left: 15.w, right: 15.w),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    height: 36.h,
-                  ),
-                  Text(
-                    "Let’s get started! Enter your mobile number",
-                    style: TextStyle(
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(
-                    height: 10.h,
-                  ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(vertical: 15.h),
-                    child: InkWell(
-                      onTap: () {
-                        Get.to(const LoginScreenNext());
-                      },
-                      child: TextFormField(
-                        enabled: false,
-                        validator: (mynumber) {
-                          if (mynumber!.isEmpty) {
-                            return 'number is Required*';
-                          } else if (mynumber.length != 10) {
-                            return 'enter 10 number ';
-                          }
-                          return null;
+                    Expanded(
+                      child: PageView(
+                        onPageChanged: (int page) {
+                          setState(() {
+                            currentPage = page;
+                          });
                         },
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          contentPadding: EdgeInsets.all(15.r),
-                          filled: true,
-                          border: OutlineInputBorder(
-                            borderSide: BorderSide(
-                              color: AppColors.greyButtonColor,
-                              width: 0.1.w,
-                            ),
-                            borderRadius: BorderRadius.circular(10.r),
-                          ),
-                          fillColor: AppColors.whitebgColor,
-                          prefixIcon: Container(
-                            width: 50.w,
-                            margin: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppColors.whitebgColor,
-                              border: Border(
-                                right: BorderSide(
-                                    width: 0.5.w,
-                                    color: AppColors.greyButtonColor),
+                        controller: controller,
+                        children: <Widget>[
+                          Column(
+                            children: [
+                              Expanded(
+                                child: Image.asset(
+                                  "assets/images/login-carausal-1.png",
+                                  fit: BoxFit.contain,
+                                ),
                               ),
-                            ),
-                            child: const Center(child: Text('+91')),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 10),
+                                child: RichText(
+                                    text: TextSpan(children: [
+                                  const TextSpan(
+                                    text: "Create ",
+                                    style: TextStyle(
+                                      color: Color.fromARGB(255, 1, 98, 178),
+                                      fontSize: 20.0,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: "your Health Profile",
+                                    style: TextStyle(
+                                      color: AppColors.selectedIconColor,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 20.0,
+                                    ),
+                                  ),
+                                ])),
+                              )
+                            ],
                           ),
-                          labelText: 'Phone Number',
+                          Column(
+                            children: [
+                              Expanded(
+                                child: Image.asset(
+                                  "assets/images/login-carausal-2.png",
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 10),
+                                child: RichText(
+                                    text: TextSpan(children: [
+                                  const TextSpan(
+                                    text: "Manage ",
+                                    style: TextStyle(
+                                      color: Color.fromARGB(255, 1, 98, 178),
+                                      fontSize: 20.0,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: "your medical Records",
+                                    style: TextStyle(
+                                      color: AppColors.selectedIconColor,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 20.0,
+                                    ),
+                                  ),
+                                ])),
+                              )
+                            ],
+                          ),
+                          Column(
+                            children: [
+                              Expanded(
+                                child: Image.asset(
+                                  "assets/images/login-carausal-3.png",
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 10),
+                                child: RichText(
+                                    text: TextSpan(children: [
+                                  const TextSpan(
+                                    text: "Track ",
+                                    style: TextStyle(
+                                      color: Color.fromARGB(255, 1, 98, 178),
+                                      fontSize: 20.0,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: "your daily body Health Measurement",
+                                    style: TextStyle(
+                                      color: AppColors.selectedIconColor,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 20.0,
+                                    ),
+                                  ),
+                                ])),
+                              )
+                            ],
+                          ),
+                          Column(
+                            children: [
+                              Expanded(
+                                child: Image.asset(
+                                  "assets/images/login-carausal-4.png",
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 10),
+                                child: RichText(
+                                    text: TextSpan(children: [
+                                  const TextSpan(
+                                    text: "Get ",
+                                    style: TextStyle(
+                                      color: Color.fromARGB(255, 1, 98, 178),
+                                      fontSize: 20.0,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: "Reminders for your Daily Medicine",
+                                    style: TextStyle(
+                                      color: AppColors.selectedIconColor,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 20.0,
+                                    ),
+                                  ),
+                                ])),
+                              )
+                            ],
+                          ),
+                          Column(
+                            children: [
+                              Expanded(
+                                child: Image.asset(
+                                  "assets/images/login-carausal-5.png",
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 10),
+                                child: RichText(
+                                  text: TextSpan(
+                                    children: [
+                                      const TextSpan(
+                                        text: "Find ",
+                                        style: TextStyle(
+                                          color:
+                                              Color.fromARGB(255, 1, 98, 178),
+                                          fontSize: 20.0,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      TextSpan(
+                                        text:
+                                            "your Nearby Doctor for the best Consultant",
+                                        style: TextStyle(
+                                          color: AppColors.selectedIconColor,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 20.0,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              )
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: buildPageIndicator(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.only(left: 15.w, right: 15.w),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      height: 36.h,
+                    ),
+                    Text(
+                      "Let’s get started! Enter your mobile number",
+                      style: TextStyle(
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(
+                      height: 10.h,
+                    ),
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 15.h),
+                      child: InkWell(
+                        onTap: () {
+                          Get.to(const LoginScreenNext());
+                        },
+                        child: TextFormField(
+                          enabled: false,
+                          validator: (mynumber) {
+                            if (mynumber!.isEmpty) {
+                              return 'number is Required*';
+                            } else if (mynumber.length != 10) {
+                              return 'enter 10 number ';
+                            }
+                            return null;
+                          },
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            contentPadding: EdgeInsets.all(15.r),
+                            filled: true,
+                            border: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                color: AppColors.greyButtonColor,
+                                width: 0.1.w,
+                              ),
+                              borderRadius: BorderRadius.circular(10.r),
+                            ),
+                            fillColor: AppColors.whitebgColor,
+                            prefixIcon: Container(
+                              width: 50.w,
+                              margin: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: AppColors.whitebgColor,
+                                border: Border(
+                                  right: BorderSide(
+                                      width: 0.5.w,
+                                      color: AppColors.greyButtonColor),
+                                ),
+                              ),
+                              child: const Center(child: Text('+91')),
+                            ),
+                            labelText: 'Phone Number',
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  // SizedBox(
-                  //   height: 10.h,
-                  // ),
-                  // Text(
-                  //   "Trouble signing in ?",
-                  //   style: TextStyle(
-                  //     fontSize: 16.sp,
-                  //     fontWeight: FontWeight.w400,
-                  //     decoration: TextDecoration.underline,
-                  //   ),
-                  // ),
-                ],
+                    // SizedBox(
+                    //   height: 10.h,
+                    // ),
+                    // Text(
+                    //   "Trouble signing in ?",
+                    //   style: TextStyle(
+                    //     fontSize: 16.sp,
+                    //     fontWeight: FontWeight.w400,
+                    //     decoration: TextDecoration.underline,
+                    //   ),
+                    // ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

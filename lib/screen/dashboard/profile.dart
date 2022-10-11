@@ -1,4 +1,5 @@
 import 'package:docuhealth/contstants/app_colors.dart';
+import 'package:docuhealth/contstants/app_colors.dart';
 import 'package:docuhealth/main.dart';
 import 'package:docuhealth/screen/cms_screen.dart';
 import 'package:docuhealth/screen/user/add_more_family_member.dart';
@@ -206,19 +207,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 },
               ),
             ),
-            // SizedBox(
-            //   width: double.infinity,
-            //   child: Center(
-            //     child: TextButton.icon(
-            //       onPressed: () {},
-            //       icon: const Icon(
-            //         Icons.edit,
-            //         size: 15,
-            //       ),
-            //       label: const Text('Manage profile'),
-            //     ),
-            //   ),
-            // ),
             SizedBox(
               height: 10.h,
             ),
@@ -264,8 +252,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   ListTile(
                     onTap: () {
-                      // Get.to(const CmsScreen(
-                      //     url: 'cms/contact-us', appBarTitle: 'Contact Us'));
+                      Get.to(
+                        const CmsScreen(
+                          url: 'cms/contact-us',
+                          appBarTitle: 'Contact Us',
+                        ),
+                      );
                     },
                     leading: CircleAvatar(
                       radius: 20,
@@ -298,9 +290,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   ListTile(
                     onTap: () {
-                      Get.to(const CmsScreen(
+                      Get.to(
+                        const CmsScreen(
                           url: 'cms/terms-and-conditions',
-                          appBarTitle: 'Term of uses'));
+                          appBarTitle: 'Term of uses',
+                        ),
+                      );
                     },
                     leading: CircleAvatar(
                       radius: 20,

@@ -1,3 +1,4 @@
+import 'package:docuhealth/controllers/image_edit_controller.dart';
 import 'package:docuhealth/screen/document_category/bookmarks_screen.dart';
 import 'package:docuhealth/screen/document_category/daily_measurements.dart';
 import 'package:docuhealth/screen/document_category/daily_remainder.dart';
@@ -10,6 +11,7 @@ import 'package:docuhealth/controllers/dashboard_controllers.dart';
 import 'package:docuhealth/controllers/document_controller.dart';
 import 'package:provider/provider.dart';
 import 'controllers/daily_measurement_controller.dart';
+import 'controllers/daily_reminder_controller.dart';
 import 'contstants/app_colors.dart';
 import 'screen/document_category/test_reports.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -26,12 +28,14 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (create) => DashBoardController()),
         ChangeNotifierProvider(
             create: (create) => DailyMeasurementController()),
+        ChangeNotifierProvider(create: (create) => DailyReminderController()),
+        ChangeNotifierProvider(create: (create) => ImageEditController()),
       ],
       child: ScreenUtilInit(
         designSize: const Size(375, 812),
         minTextAdapt: true,
         splitScreenMode: true,
-        builder: (_) {
+        builder: (_, child) {
           return GetMaterialApp(
             debugShowCheckedModeBanner: false,
             title: 'Docuhealth',

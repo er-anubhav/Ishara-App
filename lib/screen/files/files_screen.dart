@@ -136,8 +136,8 @@ class _FilesScreenState extends State<FilesScreen>
 
   onPasteButtonPress() async {
     var data = widget.documentType == "folder"
-        ? {"folder_id": "${widget.fileId}", "distination": widget.categoryName}
-        : {"file_id": "${widget.fileId}", "distination": widget.categoryName};
+        ? {"folder_id": "${widget.fileId}", "distination": "${widget.folderId}"}
+        : {"file_id": "${widget.fileId}", "distination": "${widget.folderId}"};
     final response = await baseClient.post(
         '${widget.documentType}/${widget.operationType}', data, true);
     if (response['success']) {

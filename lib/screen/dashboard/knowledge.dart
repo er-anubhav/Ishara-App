@@ -26,6 +26,7 @@ class KnowledgeScreenState extends State<KnowledgeScreen>
 
   getCategories(context) async {
     final response = await baseClient.get('blogs/categories', true);
+    print(response);
     if (response['success']) {
       categories = response['data'];
       _tabController = TabController(
@@ -212,7 +213,7 @@ class _TabBodyState extends State<TabBody> {
     final resp = await baseClient.get(
         'blogs?category=${widget.categoryId}&search=$searchKey&page=$currentPage',
         true);
-    print(resp["data"]["data_records"]);
+    // print(resp["data"]["data_records"]);
     if (resp['success']) {
       if (resp["data"]["data_records"] != null) {
         double pageCount = resp["data"]["data_records"]['total_records'] /
@@ -228,7 +229,7 @@ class _TabBodyState extends State<TabBody> {
 
   _onRefresh() async {
     var data = await getData(context, currentPage);
-    listData = data;
+    listData = data ?? [];
     if (mounted) setState(() {});
     refreshController.refreshCompleted();
   }
@@ -263,22 +264,26 @@ class _TabBodyState extends State<TabBody> {
       controller: refreshController,
       onRefresh: _onRefresh,
       onLoading: _onLoading,
-      child: ListView.builder(
-        shrinkWrap: true,
-        itemCount: listData.length,
-        itemBuilder: (_, i) {
-          return KnowledgeCard(
-            title: "${listData[i]['heading']}",
-            subtitle: "${listData[i]['description']}",
-            node: '',
-            node1: '',
-            path: '${listData[i]['image']}',
-            onPress: () {
-              Get.to(KnowledgeDetails(id: listData[i]['id']));
-            },
-          );
-        },
-      ),
+      child: listData.isEmpty
+          ? const Center(
+              child: Text("Nothing to show"),
+            )
+          : ListView.builder(
+              shrinkWrap: true,
+              itemCount: listData.length,
+              itemBuilder: (_, i) {
+                return KnowledgeCard(
+                  title: "${listData[i]['heading']}",
+                  subtitle: "${listData[i]['description']}",
+                  node: '',
+                  node1: '',
+                  path: '${listData[i]['image']}',
+                  onPress: () {
+                    Get.to(KnowledgeDetails(id: listData[i]['id']));
+                  },
+                );
+              },
+            ),
     );
   }
 }

@@ -90,8 +90,10 @@ class _ShareDocumentDialogState extends State<ShareDocumentDialog> {
     };
     final response = await baseClient.post(url, data, true);
     if (response['success']) {
+      Get.snackbar("Success", response['message']);
       return true;
     } else {
+      Get.snackbar("Failed", response['message']);
       return false;
     }
   }

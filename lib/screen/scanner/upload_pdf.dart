@@ -313,7 +313,7 @@ class _UploadPdfState extends State<UploadPdf> {
                                           categoryName: widget.selectedCategory,
                                         );
                                       },
-                                    );
+                                    ).whenComplete(() => getFolderList());
                                   },
                                   style: ElevatedButton.styleFrom(
                                     primary: AppColors.primaryColor,

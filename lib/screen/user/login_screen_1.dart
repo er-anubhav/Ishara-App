@@ -1,3 +1,4 @@
+import 'package:docuhealth/screen/cms_screen.dart';
 import 'package:docuhealth/screen/login/verify_otp_screen.dart';
 import 'package:docuhealth/services/base_client.dart';
 import 'package:flutter/material.dart';
@@ -68,6 +69,7 @@ class _LoginScreenNextState extends State<LoginScreenNext> {
                           }
                           return null;
                         },
+                        maxLength: 10,
                         keyboardType: TextInputType.number,
                         decoration: InputDecoration(
                           contentPadding: EdgeInsets.all(15.r),
@@ -80,6 +82,7 @@ class _LoginScreenNextState extends State<LoginScreenNext> {
                             borderRadius: BorderRadius.circular(10.r),
                           ),
                           fillColor: AppColors.whitebgColor,
+                          counterText: "",
                           prefixIcon: Container(
                             width: 50.w,
                             margin: const EdgeInsets.all(10),
@@ -111,13 +114,19 @@ class _LoginScreenNextState extends State<LoginScreenNext> {
                     SizedBox(
                       height: 5.h,
                     ),
-                    Text(
-                      "Terms & Conditions",
-                      style: TextStyle(
-                        fontSize: 16.sp,
-                        color: AppColors.greyTextColor,
-                        fontWeight: FontWeight.bold,
-                        decoration: TextDecoration.underline,
+                    InkWell(
+                      onTap: () => Get.to(const CmsScreen(
+                        url: "cms/terms-and-conditions",
+                        appBarTitle: "Terms & Conditions",
+                      )),
+                      child: Text(
+                        "Terms & Conditions",
+                        style: TextStyle(
+                          fontSize: 16.sp,
+                          color: AppColors.greyTextColor,
+                          fontWeight: FontWeight.bold,
+                          decoration: TextDecoration.underline,
+                        ),
                       ),
                     ),
                   ],
@@ -140,7 +149,7 @@ class _LoginScreenNextState extends State<LoginScreenNext> {
                     );
 
                     if (response['success']) {
-                      Get.to(
+                      Get.off(
                         VerifyOtpScreen(
                           mobileNUmber: phoneNUmberCOntroller.text,
                         ),

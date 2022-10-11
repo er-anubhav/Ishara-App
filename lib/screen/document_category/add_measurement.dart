@@ -10,6 +10,8 @@ import 'package:future_progress_dialog/future_progress_dialog.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import '../../controllers/daily_measurement_controller.dart';
 
 class AddMeasurement extends StatefulWidget {
   final String category;
@@ -21,9 +23,8 @@ class AddMeasurement extends StatefulWidget {
 
 class _AddMeasurementState extends State<AddMeasurement> {
   BaseClient baseClient = BaseClient();
-  TextEditingController timeController = TextEditingController(
-      text:
-          '${TimeOfDay.now().hour}:${TimeOfDay.now().minute} ${TimeOfDay.now().period.toString().split('.')[1]}');
+  TextEditingController timeController =
+      TextEditingController(text: DateFormat('hh:mm a').format(DateTime.now()));
   TextEditingController dateController = TextEditingController(
       text: DateFormat('dd-MM-yyyy').format(DateTime.now()));
   TextEditingController upperBondController = TextEditingController();
@@ -31,6 +32,9 @@ class _AddMeasurementState extends State<AddMeasurement> {
   TextEditingController commentControllerController = TextEditingController();
   TextEditingController datasController = TextEditingController();
   XFile? attachment;
+
+  List<String> weightUnit = ["Kg", "Pound"];
+  String selectedWeightUnit = "Kg";
   final ImagePicker picker = ImagePicker();
 
   _selectTime(BuildContext context) async {
@@ -42,8 +46,7 @@ class _AddMeasurementState extends State<AddMeasurement> {
     );
     if (timeOfDay != null) {
       setState(() {
-        timeController.text =
-            '${timeOfDay.hour}:${timeOfDay.minute} ${timeOfDay.period.toString().split('.')[1]}';
+        timeController.text = timeOfDay.format(context);
       });
     }
   }
@@ -54,7 +57,7 @@ class _AddMeasurementState extends State<AddMeasurement> {
       context: context,
       initialDate: selectedDate,
       firstDate: DateTime(2010),
-      lastDate: DateTime(2025),
+      lastDate: DateTime.now(),
     );
     if (selected != null && selected != selectedDate) {
       setState(() {
@@ -74,7 +77,7 @@ class _AddMeasurementState extends State<AddMeasurement> {
             ? {"pulse_rate": datasController.text}
             : widget.category == "Sugar"
                 ? {"sugar_lavel": datasController.text}
-                : {'weight': datasController.text};
+                : {'weight': "${datasController.text} $selectedWeightUnit"};
 
     String encodedData = json.encode(datas);
     var data = {
@@ -92,6 +95,10 @@ class _AddMeasurementState extends State<AddMeasurement> {
     print(response);
 
     if (response['success']) {
+      Provider.of<DailyMeasurementController>(context, listen: false)
+          .getMeasurementsData(DateTime.now(), widget.category);
+      Provider.of<DailyMeasurementController>(context, listen: false)
+          .getAnalyticsData("Daily", widget.category);
       return true;
     } else {
       return false;
@@ -163,9 +170,12 @@ class _AddMeasurementState extends State<AddMeasurement> {
               widget.category == "BP"
                   ? TextField(
                       controller: upperBondController,
+                      maxLength: 3,
+                      keyboardType: TextInputType.number,
                       decoration: InputDecoration(
                         hintText: 'Upperbond',
                         filled: true,
+                        counterText: "",
                         fillColor: AppColors.whitebgColor,
                         border: const OutlineInputBorder(),
                       ),
@@ -177,24 +187,80 @@ class _AddMeasurementState extends State<AddMeasurement> {
               widget.category == "BP"
                   ? TextField(
                       controller: lowerBondController,
+                      keyboardType: TextInputType.number,
+                      maxLength: 3,
                       decoration: InputDecoration(
                         hintText: 'Lowerbond',
                         filled: true,
+                        counterText: "",
                         fillColor: AppColors.whitebgColor,
                         border: const OutlineInputBorder(),
                       ),
                     )
                   : const SizedBox(),
               widget.category != "BP"
-                  ? TextField(
-                      controller: datasController,
-                      decoration: InputDecoration(
-                        hintText: 'Enter ${widget.category}',
-                        filled: true,
-                        fillColor: AppColors.whitebgColor,
-                        border: const OutlineInputBorder(),
-                      ),
-                    )
+                  ? widget.category == "Weight"
+                      ? Row(
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: TextField(
+                                controller: datasController,
+                                maxLength: 3,
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  counterText: "",
+                                  hintText: 'Enter ${widget.category}',
+                                  filled: true,
+                                  fillColor: AppColors.whitebgColor,
+                                  border: const OutlineInputBorder(),
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 1,
+                              child: Container(
+                                margin: const EdgeInsets.only(left: 10.0),
+                                padding: const EdgeInsets.all(5.0),
+                                decoration: BoxDecoration(
+                                  border:
+                                      Border.all(width: 1, color: Colors.black),
+                                  borderRadius: BorderRadius.circular(5.0),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton(
+                                    isExpanded: true,
+                                    value: selectedWeightUnit,
+                                    icon: const Icon(Icons.keyboard_arrow_down),
+                                    items: weightUnit.map((String items) {
+                                      return DropdownMenuItem(
+                                        value: items,
+                                        child: Text(items),
+                                      );
+                                    }).toList(),
+                                    onChanged: (String? newValue) async {
+                                      setState(() {
+                                        selectedWeightUnit = newValue!;
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : TextField(
+                          controller: datasController,
+                          maxLength: 3,
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            counterText: "",
+                            hintText: 'Enter ${widget.category}',
+                            filled: true,
+                            fillColor: AppColors.whitebgColor,
+                            border: const OutlineInputBorder(),
+                          ),
+                        )
                   : const SizedBox(),
               SizedBox(
                 height: 10.w,

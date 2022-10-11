@@ -22,6 +22,7 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
   List profiles = [];
   getUserProfile(context) async {
     final response = await baseClient.get('profiles', true);
+    print(response);
     profiles = response['data']['profiles'];
     setState(() {});
   }

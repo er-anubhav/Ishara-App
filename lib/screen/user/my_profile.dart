@@ -27,17 +27,36 @@ class MapScreenState extends State<MyProfileEdit>
   final FocusNode myFocusNode = FocusNode();
   File? profilePick;
   String profileUrl = '';
+  bool isShowselfEdit = false;
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
+  TextEditingController relationController = TextEditingController();
+  String? dropdownvalue;
+  var items = [
+    'Brother',
+    'Daughter',
+    'Father',
+    'Friend',
+    'Grand Father',
+    'Grand Mother',
+    'Husband',
+    'Mother',
+    'Sister',
+    'Son',
+    'Wife',
+  ];
 
   getProfile(context) async {
     final resp = await baseClient.get('profile/get', true);
     if (resp['success']) {
-      nameController.text = resp['data']['user']['name'];
-      emailController.text = resp['data']['user']['email'];
-      phoneController.text = resp['data']['user']['phone'];
+      nameController.text = resp['data']['profile']['name'];
+      emailController.text = resp['data']['user']['email'] ?? "";
+      phoneController.text = resp['data']['user']['phone'] ?? "";
       profileUrl = resp['data']['profile']['icon'];
+      relationController.text = resp['data']['profile']['relation'] ?? "";
+      isShowselfEdit = resp['data']['profile']['type'] != "Add-On";
+      dropdownvalue = resp['data']['profile']['relation'];
     }
     isLoading = false;
     if (mounted) {
@@ -46,15 +65,17 @@ class MapScreenState extends State<MyProfileEdit>
   }
 
   Future<bool> updateProfile(context) async {
-    var data = {
-      "name": nameController.text,
-      "email": emailController.text,
-      "phone": phoneController.text,
-      // "dob": "",
-      // "gender": "",
-      // "relation": "",
-      // "address": "",
-    };
+    var data = !isShowselfEdit
+        ? {
+            "relation": relationController.text,
+            "name": nameController.text,
+          }
+        : {
+            "name": nameController.text,
+            "email": emailController.text,
+            "phone": phoneController.text,
+          };
+    // print(data);
     final resp = await baseClient.post('profile/update', data, true);
     if (resp['success']) {
       box.write('username', nameController.text);
@@ -158,212 +179,327 @@ class MapScreenState extends State<MyProfileEdit>
                         color: const Color(0xffFFFFFF),
                         child: Padding(
                           padding: const EdgeInsets.only(bottom: 16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: <Widget>[
-                              Padding(
-                                  padding: const EdgeInsets.only(
-                                      left: 16.0, right: 16.0, top: 16.0),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    mainAxisSize: MainAxisSize.max,
-                                    children: <Widget>[
-                                      Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.start,
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: const <Widget>[
-                                          Text(
-                                            'Personal Information',
-                                            style: TextStyle(
-                                                fontSize: 18.0,
-                                                fontWeight: FontWeight.bold),
-                                          ),
-                                        ],
-                                      ),
-                                      Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.end,
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: <Widget>[
-                                          _status
-                                              ? _getEditIcon()
-                                              : Container(),
-                                        ],
-                                      )
-                                    ],
-                                  )),
-                              Padding(
-                                  padding: const EdgeInsets.only(
-                                      left: 16.0, right: 16.0, top: 16.0),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.max,
-                                    children: <Widget>[
-                                      Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.start,
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: const <Widget>[
-                                          Text(
-                                            'Name',
-                                            style: TextStyle(
-                                                fontSize: 16.0,
-                                                fontWeight: FontWeight.bold),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  )),
-                              Padding(
-                                  padding: const EdgeInsets.only(
-                                      left: 16.0, right: 16.0, top: 10.0),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.max,
-                                    children: <Widget>[
-                                      Flexible(
-                                        child: TextField(
-                                          decoration: AppTheme
-                                              .defaultDescriptionInputFieldDecoration(
-                                            'Enter user name',
-                                            Icons.person,
-                                          ),
-                                          enabled: !_status,
-                                          autofocus: !_status,
-                                          controller: nameController,
-                                        ),
-                                      ),
-                                    ],
-                                  )),
-                              // Padding(
-                              //     padding: const EdgeInsets.only(
-                              //         left: 16.0, right: 16.0, top: 16.0),
-                              //     child: Row(
-                              //       mainAxisSize: MainAxisSize.max,
-                              //       children: <Widget>[
-                              //         Column(
-                              //           mainAxisAlignment: MainAxisAlignment.start,
-                              //           mainAxisSize: MainAxisSize.min,
-                              //           children: const <Widget>[
-                              //             Text(
-                              //               'Blood Group',
-                              //               style: TextStyle(
-                              //                   fontSize: 16.0,
-                              //                   fontWeight: FontWeight.bold),
-                              //             ),
-                              //           ],
-                              //         ),
-                              //       ],
-                              //     )),
-                              // Padding(
-                              //     padding: const EdgeInsets.only(
-                              //         left: 16.0, right: 16.0, top: 2.0),
-                              //     child: Row(
-                              //       mainAxisSize: MainAxisSize.max,
-                              //       children: <Widget>[
-                              //         Flexible(
-                              //           child: TextField(
-                              //             decoration: const InputDecoration(
-                              //                 hintText: "Enter blood group"),
-                              //             enabled: !_status,
-                              //             controller: dobController,
-                              //           ),
-                              //         ),
-                              //       ],
-                              //     )),
-                              Padding(
-                                  padding: const EdgeInsets.only(
-                                      left: 16.0, right: 16.0, top: 16.0),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.max,
-                                    children: <Widget>[
-                                      Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.start,
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: const <Widget>[
-                                          Text(
-                                            'Emergency Contact',
-                                            style: TextStyle(
-                                                fontSize: 16.0,
-                                                fontWeight: FontWeight.bold),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  )),
-                              Padding(
-                                  padding: const EdgeInsets.only(
-                                      left: 16.0, right: 16.0, top: 10.0),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.max,
-                                    children: <Widget>[
-                                      Flexible(
-                                        child: TextField(
-                                          keyboardType:
-                                              TextInputType.emailAddress,
-                                          decoration: AppTheme
-                                              .defaultDescriptionInputFieldDecoration(
-                                            'Enter emergency contact number',
-                                            Icons.person,
-                                          ),
-                                          enabled: !_status,
-                                          controller: emailController,
-                                        ),
-                                      ),
-                                    ],
-                                  )),
-                              Padding(
-                                  padding: const EdgeInsets.only(
-                                      left: 16.0, right: 16.0, top: 16.0),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.max,
-                                    children: <Widget>[
-                                      Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.start,
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: const <Widget>[
-                                          Text(
-                                            'Phone number',
-                                            style: TextStyle(
-                                                fontSize: 16.0,
-                                                fontWeight: FontWeight.bold),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  )),
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                    left: 16.0, right: 16.0, top: 10.0),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.max,
+                          child: isShowselfEdit
+                              ? Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.start,
                                   children: <Widget>[
-                                    Flexible(
-                                      child: TextField(
-                                        maxLength: 10,
-                                        keyboardType: TextInputType.number,
-                                        decoration: AppTheme
-                                            .defaultDescriptionInputFieldDecoration(
-                                          'Enter phone number',
-                                          Icons.person,
-                                        ),
-                                        enabled: !_status,
-                                        controller: phoneController,
+                                    Padding(
+                                        padding: const EdgeInsets.only(
+                                            left: 16.0, right: 16.0, top: 16.0),
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          mainAxisSize: MainAxisSize.max,
+                                          children: <Widget>[
+                                            Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.start,
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: const <Widget>[
+                                                Text(
+                                                  'Personal Information',
+                                                  style: TextStyle(
+                                                      fontSize: 18.0,
+                                                      fontWeight:
+                                                          FontWeight.bold),
+                                                ),
+                                              ],
+                                            ),
+                                            Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.end,
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: <Widget>[
+                                                _status
+                                                    ? _getEditIcon()
+                                                    : Container(),
+                                              ],
+                                            )
+                                          ],
+                                        )),
+                                    Padding(
+                                        padding: const EdgeInsets.only(
+                                            left: 16.0, right: 16.0, top: 16.0),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.max,
+                                          children: <Widget>[
+                                            Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.start,
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: const <Widget>[
+                                                Text(
+                                                  'Name',
+                                                  style: TextStyle(
+                                                      fontSize: 16.0,
+                                                      fontWeight:
+                                                          FontWeight.bold),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        )),
+                                    Padding(
+                                        padding: const EdgeInsets.only(
+                                            left: 16.0, right: 16.0, top: 10.0),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.max,
+                                          children: <Widget>[
+                                            Flexible(
+                                              child: TextField(
+                                                decoration: AppTheme
+                                                    .defaultDescriptionInputFieldDecoration(
+                                                  'Enter user name',
+                                                  Icons.person,
+                                                ),
+                                                enabled: !_status,
+                                                autofocus: !_status,
+                                                controller: nameController,
+                                              ),
+                                            ),
+                                          ],
+                                        )),
+                                    Padding(
+                                        padding: const EdgeInsets.only(
+                                            left: 16.0, right: 16.0, top: 16.0),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.max,
+                                          children: <Widget>[
+                                            Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.start,
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: const <Widget>[
+                                                Text(
+                                                  'Emergency Contact',
+                                                  style: TextStyle(
+                                                      fontSize: 16.0,
+                                                      fontWeight:
+                                                          FontWeight.bold),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        )),
+                                    Padding(
+                                        padding: const EdgeInsets.only(
+                                            left: 16.0, right: 16.0, top: 10.0),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.max,
+                                          children: <Widget>[
+                                            Flexible(
+                                              child: TextField(
+                                                keyboardType:
+                                                    TextInputType.emailAddress,
+                                                decoration: AppTheme
+                                                    .defaultDescriptionInputFieldDecoration(
+                                                  'Enter emergency contact',
+                                                  Icons.person,
+                                                ),
+                                                enabled: !_status,
+                                                controller: emailController,
+                                              ),
+                                            ),
+                                          ],
+                                        )),
+                                    Padding(
+                                        padding: const EdgeInsets.only(
+                                            left: 16.0, right: 16.0, top: 16.0),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.max,
+                                          children: <Widget>[
+                                            Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.start,
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: const <Widget>[
+                                                Text(
+                                                  'Phone number',
+                                                  style: TextStyle(
+                                                      fontSize: 16.0,
+                                                      fontWeight:
+                                                          FontWeight.bold),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        )),
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                          left: 16.0, right: 16.0, top: 10.0),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.max,
+                                        children: <Widget>[
+                                          Flexible(
+                                            child: TextField(
+                                              maxLength: 10,
+                                              keyboardType:
+                                                  TextInputType.number,
+                                              decoration: AppTheme
+                                                  .defaultDescriptionInputFieldDecoration(
+                                                'Enter phone number',
+                                                Icons.person,
+                                              ),
+                                              enabled: !_status,
+                                              controller: phoneController,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
+                                    _status == false
+                                        ? Container(
+                                            child: _getActionButtons(),
+                                          )
+                                        : const SizedBox(height: 60),
                                   ],
+                                )
+                              : Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 10.0),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Padding(
+                                          padding: const EdgeInsets.only(
+                                              left: 16.0,
+                                              right: 16.0,
+                                              bottom: 16.0),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            mainAxisSize: MainAxisSize.max,
+                                            children: <Widget>[
+                                              Column(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.start,
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: const <Widget>[
+                                                  Text(
+                                                    'Personal Information',
+                                                    style: TextStyle(
+                                                        fontSize: 18.0,
+                                                        fontWeight:
+                                                            FontWeight.bold),
+                                                  ),
+                                                ],
+                                              ),
+                                              Column(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.end,
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: <Widget>[
+                                                  _status
+                                                      ? _getEditIcon()
+                                                      : Container(),
+                                                ],
+                                              )
+                                            ],
+                                          )),
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          left: 16.0,
+                                          right: 16.0,
+                                        ),
+                                        child: Text(
+                                          "Name",
+                                          style: TextStyle(
+                                            fontSize: 18.sp,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        height: 15.h,
+                                      ),
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          left: 16.0,
+                                          right: 16.0,
+                                        ),
+                                        child: TextFormField(
+                                          controller: nameController,
+                                          enabled: !_status,
+                                          decoration: AppTheme
+                                              .defaultInputFieldDecoration(
+                                            "Enter full name",
+                                            Icons.person,
+                                          ),
+                                          validator: (v) {
+                                            if (v!.isEmpty) {
+                                              return "Name is required";
+                                            }
+                                          },
+                                          inputFormatters: [
+                                            FilteringTextInputFormatter.allow(
+                                                RegExp("[ a-zA-Z]")),
+                                          ],
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        height: 15.h,
+                                      ),
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          left: 16.0,
+                                          right: 16.0,
+                                        ),
+                                        child: Text(
+                                          "Relation",
+                                          style: TextStyle(
+                                            fontSize: 18.sp,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        height: 15.h,
+                                      ),
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          left: 16.0,
+                                          right: 16.0,
+                                        ),
+                                        child: DropdownButtonFormField(
+                                          decoration: AppTheme
+                                              .defaultInputFieldDecoration(
+                                            "Select relation",
+                                            Icons.group,
+                                          ),
+                                          value: dropdownvalue,
+                                          validator: (v) {
+                                            if (relationController
+                                                .text.isEmpty) {
+                                              return "Relation is required";
+                                            }
+                                          },
+                                          icon: const Icon(
+                                              Icons.keyboard_arrow_down),
+                                          items: items.map((String items) {
+                                            return DropdownMenuItem(
+                                              value: items,
+                                              child: Text(items),
+                                            );
+                                          }).toList(),
+                                          onChanged: (String? newValue) {
+                                            setState(() {
+                                              dropdownvalue = newValue!;
+                                              relationController.text =
+                                                  dropdownvalue!;
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                      _status == false
+                                          ? Container(
+                                              child: _getActionButtons(),
+                                            )
+                                          : const SizedBox(height: 60),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              _status == false
-                                  ? Container(
-                                      child: _getActionButtons(),
-                                    )
-                                  : const SizedBox(height: 60),
-                            ],
-                          ),
                         ),
                       )
                     ],

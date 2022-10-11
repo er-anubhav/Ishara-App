@@ -1,12 +1,14 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:docuhealth/components/pdf_card.dart';
 import 'package:docuhealth/helper/get_storage_helper.dart';
+import 'package:docuhealth/model/dashboard/banners_data.dart';
 import 'package:docuhealth/screen/dashboard/profile.dart';
 import 'package:docuhealth/screen/search/search_screen.dart';
 import 'package:docuhealth/utils/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_carousel_widget/flutter_carousel_widget.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
@@ -25,6 +27,12 @@ class Dashboard extends StatefulWidget {
 
 class _DashboardState extends State<Dashboard> {
   DashBoardController dashBoardController = DashBoardController();
+  Timer? timer;
+  PageController pageController = PageController(
+    initialPage: 0,
+  );
+
+  int _currentPage = 0;
 
   @override
   void initState() {
@@ -35,7 +43,32 @@ class _DashboardState extends State<Dashboard> {
       dashBoardController.getRecentUpload(context);
       dashBoardController.getFeaturedDoctorsData(context);
     });
+    timer = Timer.periodic(const Duration(seconds: 5), (Timer timer) {
+      if (_currentPage <
+          Provider.of<DashBoardController>(context, listen: false)
+              .bannersList
+              .length) {
+        _currentPage++;
+      } else {
+        _currentPage = 0;
+      }
+
+      pageController.animateToPage(
+        _currentPage,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeIn,
+      );
+    });
+
     super.initState();
+  }
+
+  @override
+  void dispose() {
+    // TODO: implement dispose
+    timer?.cancel();
+    pageController.dispose();
+    super.dispose();
   }
 
   @override
@@ -71,13 +104,6 @@ class _DashboardState extends State<Dashboard> {
                 color: AppColors.primaryColor,
               ),
             ),
-            // Text(
-            //   "Tagline",
-            //   style: TextStyle(
-            //     fontSize: 12.sp,
-            //     color: AppColors.primaryColor,
-            //   ),
-            // ),
           ],
         ),
         iconTheme: IconThemeData(
@@ -101,16 +127,17 @@ class _DashboardState extends State<Dashboard> {
             },
             child: Padding(
               padding: EdgeInsets.only(right: 15.w),
-              child: box.read('imagePath') == ""
-                  ? Icon(
-                      Icons.person,
-                      color: AppColors.primaryColor,
-                      size: 30.r,
-                    )
-                  : CircleAvatar(
-                      child: CachedNetworkImage(
-                          imageUrl: "${box.read('imagePath')}"),
-                    ),
+              child:
+                  box.read('imagePath') == "" || box.read('imagePath') == null
+                      ? Icon(
+                          Icons.person,
+                          color: AppColors.primaryColor,
+                          size: 30.r,
+                        )
+                      : CircleAvatar(
+                          child: CachedNetworkImage(
+                              imageUrl: "${box.read('imagePath')}"),
+                        ),
             ),
           )
         ],
@@ -320,57 +347,83 @@ class _DashboardState extends State<Dashboard> {
                 thickness: 0.5,
                 color: AppColors.lightGreyTextColor,
               ),
-              Container(
-                padding: EdgeInsets.symmetric(vertical: 15.h),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryColor,
+              // Container(
+              //   padding: EdgeInsets.symmetric(vertical: 15.h),
+              //   decoration: BoxDecoration(
+              //     color: AppColors.primaryColor,
+              //   ),
+              //   child: FlutterCarousel(
+              //     options: CarouselOptions(
+              //         height: 150.h,
+              //         showIndicator: true,
+              //         autoPlayInterval: const Duration(seconds: 2),
+              //         autoPlayAnimationDuration:
+              //             const Duration(milliseconds: 800),
+              //         autoPlayCurve: Curves.fastOutSlowIn,
+              //         enlargeCenterPage: false,
+              //         autoPlay: true,
+              //         pageSnapping: true,
+              //         pauseAutoPlayOnTouch: true,
+              //         pauseAutoPlayOnManualNavigate: true,
+              //         pauseAutoPlayInFiniteScroll: false,
+              //         slideIndicator: CircularSlideIndicator(
+              //             currentIndicatorColor: AppColors.primaryColor,
+              //             indicatorBackgroundColor:
+              //                 AppColors.lightGreyTextColor,
+              //             alignment: Alignment.bottomCenter,
+              //             indicatorRadius: 4.r),
+              //         initialPage: 0),
+              //     items: banners.map((i) {
+              //       return Builder(
+              //         builder: (BuildContext context) {
+              //           return InkWell(
+              //             onTap: () async {
+              //               Utils.launchInBrowser(Uri.parse(i.url!));
+              //             },
+              //             child: Container(
+              //               margin: EdgeInsets.only(right: 5.w),
+              //               width: double.infinity,
+              //               decoration: BoxDecoration(
+              //                 borderRadius: BorderRadius.circular(15.r),
+              //                 image: DecorationImage(
+              //                   image: NetworkImage(
+              //                     i.image ?? "",
+              //                   ),
+              //                   fit: BoxFit.cover,
+              //                 ),
+              //               ),
+              //             ),
+              //           );
+              //         },
+              //       );
+              //     }).toList(),
+              //   ),
+              // ),
+              SizedBox(
+                width: MediaQuery.of(context).size.width - 30.w,
+                height: 200.h,
+                child: PageView.builder(
+                  itemCount: banners.length,
+                  pageSnapping: true,
+                  controller: pageController,
+                  onPageChanged: (page) {
+                    if (mounted) {
+                      setState(() {
+                        _currentPage = page;
+                      });
+                    }
+                  },
+                  itemBuilder: (context, pagePosition) {
+                    bool active = pagePosition == _currentPage;
+                    return slider(banners, pagePosition, active);
+                  },
                 ),
-                child: FlutterCarousel(
-                  options: CarouselOptions(
-                      height: 150.h,
-                      showIndicator: true,
-                      autoPlayInterval: const Duration(seconds: 2),
-                      autoPlayAnimationDuration:
-                          const Duration(milliseconds: 800),
-                      autoPlayCurve: Curves.fastOutSlowIn,
-                      enlargeCenterPage: false,
-                      autoPlay: true,
-                      pageSnapping: true,
-                      pauseAutoPlayOnTouch: true,
-                      pauseAutoPlayOnManualNavigate: true,
-                      pauseAutoPlayInFiniteScroll: false,
-                      slideIndicator: CircularSlideIndicator(
-                          currentIndicatorColor: AppColors.primaryColor,
-                          indicatorBackgroundColor:
-                              AppColors.lightGreyTextColor,
-                          alignment: Alignment.bottomCenter,
-                          indicatorRadius: 4.r),
-                      initialPage: 0),
-                  items: banners.map((i) {
-                    return Builder(
-                      builder: (BuildContext context) {
-                        return InkWell(
-                          onTap: () async {
-                            Utils.launchInBrowser(Uri.parse(i.url!));
-                          },
-                          child: Container(
-                            margin: EdgeInsets.only(right: 5.w),
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(15.r),
-                              image: DecorationImage(
-                                image: NetworkImage(
-                                  i.image ?? "",
-                                ),
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  }).toList(),
-                ),
+              ),
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: 10.h),
+                child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: indicators(banners.length, _currentPage)),
               ),
               doctors.isNotEmpty
                   ? Padding(
@@ -570,5 +623,55 @@ class _DashboardState extends State<Dashboard> {
         ),
       ),
     );
+  }
+
+  slider(List<BannerData> images, pagePosition, active) {
+    return InkWell(
+      onTap: () {
+        Utils.launchInBrowser(Uri.parse(images[pagePosition].url!));
+      },
+      child: AnimatedContainer(
+        padding: const EdgeInsets.all(0),
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOutCubic,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15.r),
+          image: DecorationImage(
+            image: CachedNetworkImageProvider('${images[pagePosition].image}'),
+            fit: BoxFit.fill,
+          ),
+        ),
+      ),
+    );
+  }
+
+  imageAnimation(PageController animation, images, pagePosition) {
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, widget) {
+        return SizedBox(
+          width: 200,
+          height: 200,
+          child: widget,
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 20),
+        child: Image.network(images[pagePosition]),
+      ),
+    );
+  }
+
+  List<Widget> indicators(imagesLength, currentIndex) {
+    return List<Widget>.generate(imagesLength, (index) {
+      return Container(
+        margin: const EdgeInsets.all(3),
+        width: 10,
+        height: 10,
+        decoration: BoxDecoration(
+            color: currentIndex == index ? AppColors.primaryColor : Colors.grey,
+            shape: BoxShape.circle),
+      );
+    });
   }
 }

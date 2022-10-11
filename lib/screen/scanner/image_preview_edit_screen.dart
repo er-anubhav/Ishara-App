@@ -1,17 +1,20 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:docuhealth/controllers/image_edit_controller.dart';
 import 'package:docuhealth/contstants/app_colors.dart';
 import 'package:docuhealth/screen/scanner/camera_screen.dart';
 import 'package:docuhealth/screen/scanner/select_folder_category.dart';
 import 'package:docuhealth/screen/scanner/upload_document.dart';
 import 'package:docuhealth/utils/create_pdf.dart';
 import 'package:flutter/material.dart';
+import 'package:future_progress_dialog/future_progress_dialog.dart';
 import 'package:get/get.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:opencv_4/factory/pathfrom.dart';
 import 'package:opencv_4/opencv_4.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
 import '../../components/pdf_preview.dart';
 
 List<XFile> finalImages = [];
@@ -34,28 +37,26 @@ class ImagePreviewEditScreen extends StatefulWidget {
 }
 
 class _ImagePreviewEditScreenState extends State<ImagePreviewEditScreen> {
-  PageController controller = PageController();
+  ImageEditController imageEditController = ImageEditController();
+  PageController pageController = PageController(
+    initialPage: 0,
+  );
+  int _currentPage = 0;
   bool isLoading = false;
-  var currentPageValue = 0.0;
-  Uint8List? blackAndWhite, magicColor, original;
   String versionOpenCV = 'OpenCV';
-  bool visible = false;
 
   @override
   void initState() {
     finalImages.insertAll(0, widget.images);
-    controller.addListener(() {
-      setState(() {
-        currentPageValue = controller.page!;
-      });
-    });
-    loadFilter();
+    imageEditController =
+        Provider.of<ImageEditController>(context, listen: false);
+    imageEditController.loadFilter(_currentPage);
     super.initState();
   }
 
   @override
   void dispose() {
-    controller.dispose();
+    pageController.dispose();
     super.dispose();
   }
 
@@ -82,34 +83,6 @@ class _ImagePreviewEditScreenState extends State<ImagePreviewEditScreen> {
       ],
     );
     return croppedFile;
-  }
-
-  loadFilter() async {
-    original = await Cv2.bilateralFilter(
-      pathFrom: CVPathFrom.GALLERY_CAMERA,
-      pathString: finalImages[currentPageValue.toInt()].path,
-      diameter: 20,
-      sigmaColor: 75,
-      sigmaSpace: 75,
-      borderType: Cv2.BORDER_DEFAULT,
-    );
-
-    magicColor = await Cv2.pyrMeanShiftFiltering(
-      pathFrom: CVPathFrom.GALLERY_CAMERA,
-      pathString: finalImages[currentPageValue.toInt()].path,
-      spatialWindowRadius: 20,
-      colorWindowRadius: 20,
-    );
-
-    blackAndWhite = await Cv2.cvtColor(
-      pathFrom: CVPathFrom.GALLERY_CAMERA,
-      pathString: finalImages[currentPageValue.toInt()].path,
-      outputType: Cv2.COLOR_BGR2GRAY,
-    );
-
-    visible = true;
-    isLoading = false;
-    setState(() {});
   }
 
   Widget _indicator(bool isActive) {
@@ -156,17 +129,18 @@ class _ImagePreviewEditScreenState extends State<ImagePreviewEditScreen> {
                 onTap: () async {
                   Directory tempDir = await getTemporaryDirectory();
                   File file = File('${tempDir.path}/image.jpeg');
-                  File newFile = await file.writeAsBytes(original!);
+                  File newFile =
+                      await file.writeAsBytes(imageEditController.original!);
                   print(newFile.path);
-                  finalImages[currentPageValue.toInt()] = XFile(newFile.path);
+                  finalImages[_currentPage] = XFile(newFile.path);
                   setState(() {});
                   Get.back();
                 },
                 child: Container(
                   margin: const EdgeInsets.only(top: 5),
-                  child: original != null
+                  child: imageEditController.original != null
                       ? Image.memory(
-                          original!,
+                          imageEditController.original!,
                           fit: BoxFit.fill,
                         )
                       : Icon(
@@ -184,17 +158,17 @@ class _ImagePreviewEditScreenState extends State<ImagePreviewEditScreen> {
                 onTap: () async {
                   Directory tempDir = await getTemporaryDirectory();
                   File file = File('${tempDir.path}/blackAndWhite.jpeg');
-                  File newFile = await file.writeAsBytes(blackAndWhite!);
-                  print(newFile.path);
-                  finalImages[currentPageValue.toInt()] = XFile(newFile.path);
+                  File newFile = await file
+                      .writeAsBytes(imageEditController.blackAndWhite!);
+                  finalImages[_currentPage] = XFile(newFile.path);
                   setState(() {});
                   Get.back();
                 },
                 child: Container(
                   margin: const EdgeInsets.only(top: 5),
-                  child: blackAndWhite != null
+                  child: imageEditController.blackAndWhite != null
                       ? Image.memory(
-                          blackAndWhite!,
+                          imageEditController.blackAndWhite!,
                           fit: BoxFit.fill,
                         )
                       : Icon(
@@ -212,17 +186,17 @@ class _ImagePreviewEditScreenState extends State<ImagePreviewEditScreen> {
                 onTap: () async {
                   Directory tempDir = await getTemporaryDirectory();
                   File file = File('${tempDir.path}/magicColor.jpeg');
-                  File newFile = await file.writeAsBytes(magicColor!);
+                  File newFile =
+                      await file.writeAsBytes(imageEditController.magicColor!);
                   print(newFile.path);
-                  finalImages[currentPageValue.toInt()] = XFile(newFile.path);
-                  setState(() {});
+                  finalImages[_currentPage] = XFile(newFile.path);
                   Get.back();
                 },
                 child: Container(
                   margin: const EdgeInsets.only(top: 5),
-                  child: magicColor != null
+                  child: imageEditController.magicColor != null
                       ? Image.memory(
-                          magicColor!,
+                          imageEditController.magicColor!,
                           fit: BoxFit.fill,
                         )
                       : Icon(
@@ -286,7 +260,7 @@ class _ImagePreviewEditScreenState extends State<ImagePreviewEditScreen> {
         backgroundColor: AppColors.primaryColor,
         child: const Icon(Icons.add_a_photo),
         onPressed: () {
-          Get.to(
+          Get.off(
             const CameraScreen(
               appBarTitle: '',
             ),
@@ -299,8 +273,16 @@ class _ImagePreviewEditScreenState extends State<ImagePreviewEditScreen> {
             )
           : SafeArea(
               child: PageView.builder(
-              controller: controller,
-              itemBuilder: (context, index) {
+              pageSnapping: true,
+              controller: pageController,
+              onPageChanged: (page) async {
+                if (mounted) {
+                  setState(() {
+                    _currentPage = page;
+                  });
+                }
+              },
+              itemBuilder: (context, pagePosition) {
                 return Column(
                   children: [
                     Expanded(
@@ -308,22 +290,16 @@ class _ImagePreviewEditScreenState extends State<ImagePreviewEditScreen> {
                         decoration: BoxDecoration(
                           image: DecorationImage(
                             image: FileImage(
-                              File(finalImages[index].path),
+                              File(finalImages[pagePosition].path),
                             ),
                           ),
                         ),
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 15.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: finalImages
-                            .map((e) =>
-                                _indicator(index == currentPageValue.toInt()))
-                            .toList(),
-                      ),
-                    )
+                        padding: const EdgeInsets.symmetric(vertical: 15.0),
+                        child:
+                            Text('${_currentPage + 1}/${finalImages.length}'))
                   ],
                 );
               },
@@ -333,22 +309,23 @@ class _ImagePreviewEditScreenState extends State<ImagePreviewEditScreen> {
         onTap: (index) async {
           if (index == 0) {
             final croppedFile = await cropImage(
-              File(finalImages[currentPageValue.toInt()].path),
+              File(finalImages[_currentPage].path),
             );
-            finalImages[currentPageValue.toInt()] = XFile(croppedFile!.path);
+            finalImages[_currentPage] = XFile(croppedFile!.path);
             setState(() {});
           } else if (index == 1) {
-            showModalBottomSheet<void>(
+            await showDialog(
               context: context,
-              builder: (BuildContext context) {
-                return bottomSheetFilterWidget(
-                  context,
-                  currentPageValue.toInt(),
-                );
-              },
-            );
+              builder: (context) => FutureProgressDialog(
+                  imageEditController.loadFilter(_currentPage)),
+            ).whenComplete(() => showModalBottomSheet<void>(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return bottomSheetFilterWidget(context, _currentPage);
+                  },
+                ));
           } else if (index == 2) {
-            finalImages.remove(finalImages[currentPageValue.toInt()]);
+            finalImages.remove(finalImages[_currentPage]);
             setState(() {});
           }
         },
