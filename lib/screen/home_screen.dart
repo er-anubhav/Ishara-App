@@ -12,7 +12,7 @@ import 'package:get/get.dart';
 
 class HomePage extends StatefulWidget {
   final int currentIndex;
-  const HomePage({Key? key, required this.currentIndex}) : super(key: key);
+  const HomePage({super.key, required this.currentIndex});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -93,7 +93,7 @@ class _HomePageState extends State<HomePage>
         controller: _pageController,
         allowImplicitScrolling: false,
         physics: const NeverScrollableScrollPhysics(),
-        children: const <Widget>[
+        children: <Widget>[
           Dashboard(),
           NearByScreen(),
           KnowledgeScreen(),

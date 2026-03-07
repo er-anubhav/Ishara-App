@@ -6,7 +6,7 @@ import '../../contstants/app_colors.dart';
 import '../../theme.dart';
 
 class AddNewDocument extends StatefulWidget {
-  const AddNewDocument({Key? key}) : super(key: key);
+  const AddNewDocument({super.key});
 
   @override
   State<AddNewDocument> createState() => _AddNewDocumentState();

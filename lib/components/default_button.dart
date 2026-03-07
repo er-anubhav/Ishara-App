@@ -6,27 +6,12 @@ class DefaultButton extends StatelessWidget {
   final String buttonText;
   final VoidCallback onPress;
   const DefaultButton(
-      {Key? key, required this.buttonText, required this.onPress})
-      : super(key: key);
+      {super.key, required this.buttonText, required this.onPress});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       margin: EdgeInsets.symmetric(vertical: 16.0.h, horizontal: 30.w),
-      child: ButtonTheme(
-        height: 50.h,
-        child: TextButton(
-          onPressed: onPress,
-          child: Center(
-              child: Text(
-            buttonText,
-            style: TextStyle(
-                color: Colors.white,
-                fontSize: 18.sp,
-                fontWeight: FontWeight.bold),
-          )),
-        ),
-      ),
       decoration: BoxDecoration(
         color: AppColors.primaryColor,
         borderRadius: BorderRadius.circular(5),
@@ -40,6 +25,20 @@ class DefaultButton extends StatelessWidget {
               offset: const Offset(-1, 2),
               blurRadius: 5)
         ],
+      ),
+      child: ButtonTheme(
+        height: 50.h,
+        child: TextButton(
+          onPressed: onPress,
+          child: Center(
+              child: Text(
+            buttonText,
+            style: TextStyle(
+                color: Colors.white,
+                fontSize: 18.sp,
+                fontWeight: FontWeight.bold),
+          )),
+        ),
       ),
     );
   }

@@ -4,8 +4,7 @@ import '../../contstants/app_colors.dart';
 
 class FilterScreen extends StatefulWidget {
   final List filterListData;
-  const FilterScreen({Key? key, required this.filterListData})
-      : super(key: key);
+  const FilterScreen({super.key, required this.filterListData});
 
   @override
   State<FilterScreen> createState() => _FilterScreenState();

@@ -11,7 +11,6 @@ import 'package:pull_to_refresh/pull_to_refresh.dart';
 import '../../components/image_preview_screen.dart';
 import '../../components/pdf_preview.dart';
 import '../../contstants/app_colors.dart';
-import '../../main.dart';
 import '../../theme.dart';
 import '../folders/create_folder_dialog.dart';
 import '../scanner/camera_screen.dart';
@@ -22,11 +21,10 @@ class MyDocumnets extends StatefulWidget {
   final int? fileId;
 
   const MyDocumnets(
-      {Key? key,
+      {super.key,
       required this.operationType,
       this.fileId,
-      required this.documentType})
-      : super(key: key);
+      required this.documentType});
 
   @override
   State<MyDocumnets> createState() => _MyDocumnetsState();
@@ -54,28 +52,45 @@ class _MyDocumnetsState extends State<MyDocumnets>
   String sortBy = '';
   List listData = [];
 
-  getData(context, currentPage) async {
+  Future<List<dynamic>> getData(int currentPage) async {
     isLoading = true;
-    setState(() {});
-    final resp = await baseClient.get(
-        'my-documents?sort_by=$sortBy&page=$currentPage&search=$searchKey',
-        true);
-    print(resp["data"]["data_records"]);
-    if (resp['success']) {
-      if (resp["data"]["data_records"] != null) {
-        double pageCount = resp["data"]["data_records"]['total_records'] /
-            resp["data"]["data_records"]['limit'];
-
-        totalpage = pageCount.ceil();
-      }
-      return resp['data']['data'];
+    if (mounted) {
+      setState(() {});
     }
-    isLoading = false;
-    setState(() {});
+
+    try {
+      final resp = await baseClient.get(
+          'my-documents?sort_by=$sortBy&page=$currentPage&search=$searchKey',
+          true);
+
+      if (resp['success']) {
+        if (resp["data"]["data_records"] != null) {
+          double pageCount = resp["data"]["data_records"]['total_records'] /
+              resp["data"]["data_records"]['limit'];
+
+          totalpage = pageCount.ceil();
+        }
+        return (resp['data']['data'] as List?)?.cast<dynamic>() ?? <dynamic>[];
+      }
+
+      if (resp['message'] != null) {
+        Get.snackbar('Failed', '${resp['message']}',
+            backgroundColor: Colors.red, colorText: Colors.white);
+      }
+      return <dynamic>[];
+    } catch (_) {
+      return <dynamic>[];
+    } finally {
+      isLoading = false;
+      if (mounted) {
+        setState(() {});
+      }
+    }
   }
 
-  _onRefresh() async {
-    var data = await getData(context, currentPage);
+  Future<void> _onRefresh() async {
+    currentPage = 1;
+    var data = await getData(currentPage);
     listData = data;
     if (mounted) setState(() {});
     refreshController.refreshCompleted();
@@ -86,7 +101,7 @@ class _MyDocumnetsState extends State<MyDocumnets>
     if (currentPage > totalpage) {
       refreshController.loadNoData();
     } else {
-      var data = await getData(context, currentPage);
+      var data = await getData(currentPage);
       for (var i = 0; i < data.length; i++) {
         if (data[i]['tag'] != 'folder' && data[i]['tag'] != 'category') {
           listData.add(data[i]);
@@ -100,7 +115,7 @@ class _MyDocumnetsState extends State<MyDocumnets>
   Future<bool> ondeleteFilePress(int id, buttonType) async {
     final resp = await baseClient.get("$buttonType/delete/$id", true);
     if (resp['success']) {
-      getData(context, currentPage);
+      getData(currentPage);
       Get.snackbar('Success', '${resp['message']}',
           backgroundColor: Colors.green);
       return true;
@@ -120,7 +135,7 @@ class _MyDocumnetsState extends State<MyDocumnets>
           };
     final resp = await baseClient.post("$buttonType/rename", data, true);
     if (resp['success']) {
-      getData(context, currentPage);
+      getData(currentPage);
       return true;
     } else {
       Get.snackbar('Failed', resp['message'],
@@ -129,7 +144,7 @@ class _MyDocumnetsState extends State<MyDocumnets>
     }
   }
 
-  onPasteButtonPress() async {
+  Future<bool> onPasteButtonPress() async {
     var data = widget.documentType == "folder"
         ? {"folder_id": "${widget.fileId}", "distination": ""}
         : {"file_id": "${widget.fileId}", "distination": ""};
@@ -146,7 +161,8 @@ class _MyDocumnetsState extends State<MyDocumnets>
     }
   }
 
-  onBookMarkButtonPress(int id, String operation, String documentType) async {
+  Future<bool> onBookMarkButtonPress(
+      int id, String operation, String documentType) async {
     final response = await baseClient.get(
         'bookmark/$operation?id=$id&type=$documentType', true);
     if (response['success']) {
@@ -160,7 +176,7 @@ class _MyDocumnetsState extends State<MyDocumnets>
     }
   }
 
-  String getCategoryImage(categoryType) {
+  String getCategoryImage(String categoryType) {
     switch (categoryType) {
       case "TEST_REPORTS":
         return "assets/images/lab-report.png";
@@ -181,7 +197,7 @@ class _MyDocumnetsState extends State<MyDocumnets>
     }
   }
 
-  String getRoute(categoryType) {
+  String getRoute(String categoryType) {
     switch (categoryType) {
       case "TEST_REPORTS":
         return "/Test_Reports";
@@ -198,7 +214,7 @@ class _MyDocumnetsState extends State<MyDocumnets>
     }
   }
 
-  animate() {
+  void animate() {
     if (!isOpened) {
       _animationController!.forward();
     } else {
@@ -239,7 +255,7 @@ class _MyDocumnetsState extends State<MyDocumnets>
         curve: _curve,
       ),
     ));
-    getData(context, currentPage);
+    getData(currentPage);
   }
 
   @override
@@ -253,6 +269,7 @@ class _MyDocumnetsState extends State<MyDocumnets>
         ),
         backgroundColor: AppColors.primaryColor,
         bottom: PreferredSize(
+          preferredSize: Size(double.infinity, 50.h),
           child: Padding(
             padding: EdgeInsets.all(10.r),
             child: Row(
@@ -314,7 +331,6 @@ class _MyDocumnetsState extends State<MyDocumnets>
               ],
             ),
           ),
-          preferredSize: Size(double.infinity, 50.h),
         ),
         title: Text(
           "My documents",
@@ -336,7 +352,7 @@ class _MyDocumnetsState extends State<MyDocumnets>
                   builder: (context) => FutureProgressDialog(
                       onPasteButtonPress(),
                       message: const Text('Please wait...')),
-                ).whenComplete(() => getData(context, currentPage));
+                ).whenComplete(() => getData(currentPage));
               },
             )
           : Column(
@@ -365,7 +381,7 @@ class _MyDocumnetsState extends State<MyDocumnets>
                             categoryName: "My documents",
                           );
                         },
-                      ).whenComplete(() => getData(context, currentPage));
+                      ).whenComplete(() => getData(currentPage));
                     },
                     backgroundColor: Colors.white,
                     tooltip: 'Create new folder',
@@ -422,7 +438,6 @@ class _MyDocumnetsState extends State<MyDocumnets>
           shrinkWrap: true,
           itemCount: listData.length,
           itemBuilder: (_, i) {
-            print(listData[i]['value']);
             return Card(
               color: AppColors.whitebgColor,
               shape: RoundedRectangleBorder(
@@ -538,13 +553,13 @@ class _MyDocumnetsState extends State<MyDocumnets>
                                       ),
                                     ),
                                   );
-                                  print(resp);
+                                  if (!context.mounted) return;
                                   if (resp) {
-                                    final resp = await showDialog(
+                                    await showDialog(
                                       context: context,
                                       builder: (context) =>
                                           FutureProgressDialog(
-                                        getData(context, currentPage),
+                                        getData(currentPage),
                                         message: const Text(
                                           'Please wait...',
                                         ),
@@ -565,13 +580,13 @@ class _MyDocumnetsState extends State<MyDocumnets>
                                       ),
                                     ),
                                   );
-                                  print(resp);
+                                  if (!context.mounted) return;
                                   if (resp) {
-                                    final resp = await showDialog(
+                                    await showDialog(
                                       context: context,
                                       builder: (context) =>
                                           FutureProgressDialog(
-                                        getData(context, currentPage),
+                                        getData(currentPage),
                                         message: const Text(
                                           'Please wait...',
                                         ),
@@ -621,7 +636,8 @@ class _MyDocumnetsState extends State<MyDocumnets>
                                             ).whenComplete(() => _onRefresh());
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            primary: AppColors.primaryColor,
+                                            backgroundColor:
+                                                AppColors.primaryColor,
                                           ),
                                           child: const Text('Yes'),
                                         ),
@@ -634,7 +650,8 @@ class _MyDocumnetsState extends State<MyDocumnets>
                                             Get.back();
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            primary: Colors.grey.shade400,
+                                            backgroundColor:
+                                                Colors.grey.shade400,
                                           ),
                                           child: const Text('Cancel'),
                                         ),
@@ -652,7 +669,7 @@ class _MyDocumnetsState extends State<MyDocumnets>
                                           decoration: AppTheme
                                               .defaultDescriptionInputFieldDecoration(
                                             "${listData[i]['name']}",
-                                            const Icon(Icons.folder),
+                                            Icons.folder,
                                           ),
                                         ),
                                       ),
@@ -681,7 +698,8 @@ class _MyDocumnetsState extends State<MyDocumnets>
                                             }
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            primary: AppColors.primaryColor,
+                                            backgroundColor:
+                                                AppColors.primaryColor,
                                           ),
                                           child: const Text('Continue'),
                                         ),
@@ -694,7 +712,8 @@ class _MyDocumnetsState extends State<MyDocumnets>
                                             Get.back();
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            primary: Colors.grey.shade400,
+                                            backgroundColor:
+                                                Colors.grey.shade400,
                                           ),
                                           child: const Text('Cancel'),
                                         ),
@@ -761,7 +780,8 @@ class _MyDocumnetsState extends State<MyDocumnets>
                                             ).whenComplete(() => _onRefresh());
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            primary: AppColors.primaryColor,
+                                            backgroundColor:
+                                                AppColors.primaryColor,
                                           ),
                                           child: const Text('Yes'),
                                         ),
@@ -774,7 +794,8 @@ class _MyDocumnetsState extends State<MyDocumnets>
                                             Get.back();
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            primary: Colors.grey.shade400,
+                                            backgroundColor:
+                                                Colors.grey.shade400,
                                           ),
                                           child: const Text('Cancel'),
                                         ),
@@ -796,7 +817,7 @@ class _MyDocumnetsState extends State<MyDocumnets>
                                               decoration: AppTheme
                                                   .defaultDescriptionInputFieldDecoration(
                                                 "${listData[i]['name'] ?? 'File name'}",
-                                                const Icon(Icons.folder),
+                                                Icons.folder,
                                               ),
                                             ),
                                             SizedBox(
@@ -807,7 +828,7 @@ class _MyDocumnetsState extends State<MyDocumnets>
                                               decoration: AppTheme
                                                   .defaultDescriptionInputFieldDecoration(
                                                 "${listData[i]['remarks'] ?? 'Remarks'}",
-                                                const Icon(Icons.folder),
+                                                Icons.folder,
                                               ),
                                             ),
                                           ],
@@ -839,7 +860,8 @@ class _MyDocumnetsState extends State<MyDocumnets>
                                             }
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            primary: AppColors.primaryColor,
+                                            backgroundColor:
+                                                AppColors.primaryColor,
                                           ),
                                           child: const Text('Continue'),
                                         ),
@@ -852,7 +874,8 @@ class _MyDocumnetsState extends State<MyDocumnets>
                                             Get.back();
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            primary: Colors.grey.shade400,
+                                            backgroundColor:
+                                                Colors.grey.shade400,
                                           ),
                                           child: const Text('Cancel'),
                                         ),

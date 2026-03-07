@@ -21,12 +21,11 @@ class ImagePreviewScreen extends StatefulWidget {
   final String fileName;
   final String remarks;
   const ImagePreviewScreen(
-      {Key? key,
+      {super.key,
       required this.imageUrl,
       required this.fileId,
       required this.fileName,
-      required this.remarks})
-      : super(key: key);
+      required this.remarks});
 
   @override
   State<ImagePreviewScreen> createState() => _ImagePreviewScreenState();
@@ -41,8 +40,10 @@ class _ImagePreviewScreenState extends State<ImagePreviewScreen> {
     final apiResp = await baseClient.get("$buttonType/delete/$id", true);
     final resp = jsonDecode(apiResp);
     if (resp['success']) {
-      Provider.of<DashBoardController>(context, listen: false)
-          .getRecentUpload(context);
+      if (mounted) {
+        Provider.of<DashBoardController>(context, listen: false)
+            .getRecentUpload(context);
+      }
       Get.snackbar('Success', '${resp['message']}',
           backgroundColor: Colors.green);
       return true;
@@ -114,7 +115,7 @@ class _ImagePreviewScreenState extends State<ImagePreviewScreen> {
                               ).whenComplete(() => Get.back());
                             },
                             style: ElevatedButton.styleFrom(
-                              primary: AppColors.primaryColor,
+                              backgroundColor: AppColors.primaryColor,
                             ),
                             child: const Text('Yes'),
                           ),
@@ -127,7 +128,7 @@ class _ImagePreviewScreenState extends State<ImagePreviewScreen> {
                               Get.back();
                             },
                             style: ElevatedButton.styleFrom(
-                              primary: Colors.grey.shade400,
+                              backgroundColor: Colors.grey.shade400,
                             ),
                             child: const Text('Cancel'),
                           ),
@@ -148,7 +149,7 @@ class _ImagePreviewScreenState extends State<ImagePreviewScreen> {
                                 decoration: AppTheme
                                     .defaultDescriptionInputFieldDecoration(
                                   widget.fileName,
-                                  const Icon(Icons.folder),
+                                  Icons.folder,
                                 ),
                               ),
                               SizedBox(
@@ -159,7 +160,7 @@ class _ImagePreviewScreenState extends State<ImagePreviewScreen> {
                                 decoration: AppTheme
                                     .defaultDescriptionInputFieldDecoration(
                                   widget.remarks,
-                                  const Icon(Icons.folder),
+                                  Icons.folder,
                                 ),
                               ),
                             ],
@@ -189,7 +190,7 @@ class _ImagePreviewScreenState extends State<ImagePreviewScreen> {
                               }
                             },
                             style: ElevatedButton.styleFrom(
-                              primary: AppColors.primaryColor,
+                              backgroundColor: AppColors.primaryColor,
                             ),
                             child: const Text('Continue'),
                           ),
@@ -202,7 +203,7 @@ class _ImagePreviewScreenState extends State<ImagePreviewScreen> {
                               Get.back();
                             },
                             style: ElevatedButton.styleFrom(
-                              primary: Colors.grey.shade400,
+                              backgroundColor: Colors.grey.shade400,
                             ),
                             child: const Text('Cancel'),
                           ),

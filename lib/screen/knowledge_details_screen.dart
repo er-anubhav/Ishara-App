@@ -7,7 +7,7 @@ import 'package:get/get.dart';
 
 class KnowledgeDetails extends StatefulWidget {
   final int id;
-  const KnowledgeDetails({Key? key, required this.id}) : super(key: key);
+  const KnowledgeDetails({super.key, required this.id});
 
   @override
   State<KnowledgeDetails> createState() => _KnowledgeDetailsState();
@@ -19,7 +19,7 @@ class _KnowledgeDetailsState extends State<KnowledgeDetails> {
   List blogData = [];
   bool isLoading = true;
 
-  getData() async {
+  Future<void> getData() async {
     final response = await baseClient.get('blog/view/${widget.id}', true);
     if (response['success']) {
       blogData = response["data"];

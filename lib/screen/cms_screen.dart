@@ -7,8 +7,7 @@ import '../contstants/app_colors.dart';
 class CmsScreen extends StatefulWidget {
   final String url;
   final String appBarTitle;
-  const CmsScreen({Key? key, required this.url, required this.appBarTitle})
-      : super(key: key);
+  const CmsScreen({super.key, required this.url, required this.appBarTitle});
 
   @override
   State<CmsScreen> createState() => _CmsScreenState();
@@ -17,9 +16,9 @@ class CmsScreen extends StatefulWidget {
 class _CmsScreenState extends State<CmsScreen> {
   bool isLoading = true;
   BaseClient baseClient = BaseClient();
-  var htmlData;
+  String? htmlData;
 
-  getCmsData() async {
+  Future<void> getCmsData() async {
     final response = await baseClient.get(widget.url, false);
     if (response['success']) {
       htmlData = response['data']['content'];
@@ -67,7 +66,7 @@ class _CmsScreenState extends State<CmsScreen> {
                 )
               : SingleChildScrollView(
                   child: HtmlWidget(
-                    htmlData,
+                    htmlData ?? '',
                     enableCaching: true,
                   ),
                 ),

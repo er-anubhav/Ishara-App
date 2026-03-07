@@ -15,8 +15,7 @@ import '../../contstants/app_colors.dart';
 
 class VerifyOtpScreen extends StatefulWidget {
   final String mobileNUmber;
-  const VerifyOtpScreen({Key? key, required this.mobileNUmber})
-      : super(key: key);
+  const VerifyOtpScreen({super.key, required this.mobileNUmber});
 
   @override
   State<VerifyOtpScreen> createState() => _VerifyOtpScreenState();
@@ -61,7 +60,7 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
   }
 
   // snackBar Widget
-  snackBar(String? message) {
+  ScaffoldFeatureController<SnackBar, SnackBarClosedReason> snackBar(String? message) {
     return ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message!),
@@ -216,24 +215,34 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
                         message: const Text('Loading...')),
                   );
 
+                  debugPrint('OTP verify response: $response');
                   if (response['success']) {
+                    final userData =
+                        (response['data'] is List && response['data'].isNotEmpty)
+                            ? Map<String, dynamic>.from(response['data'][0])
+                            : <String, dynamic>{};
+                    final action = (response['action'] ?? '').toString();
+                    final hasProfileContext =
+                        action != 'go_to_register' && action != 'go_to_profiles';
+
                     setState(
                       () {
                         hasError = false;
                         snackBar("OTP Verified!");
                         GetStorageHelper.setdata(
-                          response['data'][0]['id'],
-                          response['data'][0]['name'],
-                          response['data'][0]['phone'],
-                          response['data'][0]['email'],
+                          (userData['id'] ?? '').toString(),
+                          (userData['name'] ?? '').toString(),
+                          (userData['phone'] ?? '').toString(),
+                          (userData['email'] ?? '').toString(),
                           '',
-                          response['token'],
+                          (response['token'] ?? '').toString(),
+                          hasProfileContext: hasProfileContext,
                         );
                       },
                     );
-                    if (response['action'] == 'go_to_register') {
+                    if (action == 'go_to_register') {
                       Get.off(const UserRegistrationScreen());
-                    } else if (response['action'] == 'go_to_profiles') {
+                    } else if (action == 'go_to_profiles') {
                       Get.off(const SelectUserScreen());
                     } else {
                       Get.off(const HomePage(

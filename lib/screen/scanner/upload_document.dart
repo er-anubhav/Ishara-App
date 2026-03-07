@@ -20,13 +20,12 @@ class UploadDcoumnetScreen extends StatefulWidget {
   final String redirectTo;
   final int? selectedFolder;
   const UploadDcoumnetScreen(
-      {Key? key,
+      {super.key,
       required this.uploadIMages,
       required this.selectedCategory,
       required this.appBarTitle,
       required this.selectedFolder,
-      required this.redirectTo})
-      : super(key: key);
+      required this.redirectTo});
 
   @override
   State<UploadDcoumnetScreen> createState() => _UploadDcoumnetScreenState();
@@ -41,7 +40,7 @@ class _UploadDcoumnetScreenState extends State<UploadDcoumnetScreen> {
   var items = [];
   List<String> uploadedImagesPath = [];
 
-  getFolderCategoryType() async {
+  Future<void> getFolderCategoryType() async {
     switch (widget.selectedCategory) {
       case "TEST_REPORTS":
         inputHintText = "Select report";
@@ -62,8 +61,8 @@ class _UploadDcoumnetScreenState extends State<UploadDcoumnetScreen> {
     }
   }
 
-  getFolderList() async {
-    print(widget.selectedCategory);
+  Future<void> getFolderList() async {
+    debugPrint(widget.selectedCategory);
     final response = await baseClient.get(
         'folder/get?category=${widget.selectedCategory}', true);
 
@@ -77,7 +76,7 @@ class _UploadDcoumnetScreenState extends State<UploadDcoumnetScreen> {
     for (var i = 0; i < widget.uploadIMages.length; i++) {
       final response = await baseClient.uploadDocument(
           'file/uploader', '', widget.uploadIMages[i].path, true);
-      print(response);
+      debugPrint(response);
       var respData = jsonDecode(response);
       if (respData['success']) {
         uploadedImagesPath.add(respData['data'][0]['file_name'].toString());
@@ -166,8 +165,7 @@ class _UploadDcoumnetScreenState extends State<UploadDcoumnetScreen> {
                             width: double.infinity,
                             child: ElevatedButton.icon(
                               onPressed: () async {
-                                final bool response =
-                                    await showModalBottomSheet(
+                                await showModalBottomSheet(
                                   context: context,
                                   isScrollControlled: true,
                                   shape: const RoundedRectangleBorder(
@@ -183,7 +181,7 @@ class _UploadDcoumnetScreenState extends State<UploadDcoumnetScreen> {
                                 ).whenComplete(() => getFolderList());
                               },
                               style: ElevatedButton.styleFrom(
-                                primary: AppColors.primaryColor,
+                                backgroundColor: AppColors.primaryColor,
                               ),
                               icon: const Icon(Icons.add),
                               label: Text(
@@ -210,7 +208,7 @@ class _UploadDcoumnetScreenState extends State<UploadDcoumnetScreen> {
                                         ? Icons.person
                                         : Icons.folder,
                                   ),
-                                  value: dropdownvalue,
+                                  initialValue: dropdownvalue,
                                   icon: const Icon(Icons.keyboard_arrow_down),
                                   items: items.map((items) {
                                     return DropdownMenuItem(
@@ -230,8 +228,7 @@ class _UploadDcoumnetScreenState extends State<UploadDcoumnetScreen> {
                                 height: 50.h,
                                 child: ElevatedButton.icon(
                                   onPressed: () async {
-                                    final bool response =
-                                        await showModalBottomSheet(
+                                    await showModalBottomSheet(
                                       context: context,
                                       isScrollControlled: true,
                                       shape: const RoundedRectangleBorder(
@@ -247,7 +244,7 @@ class _UploadDcoumnetScreenState extends State<UploadDcoumnetScreen> {
                                     ).whenComplete(() => getFolderList());
                                   },
                                   style: ElevatedButton.styleFrom(
-                                    primary: AppColors.primaryColor,
+                                    backgroundColor: AppColors.primaryColor,
                                   ),
                                   icon: const Icon(Icons.add),
                                   label: Text(
@@ -319,7 +316,7 @@ class _UploadDcoumnetScreenState extends State<UploadDcoumnetScreen> {
                 message: const Text('Uploading...'),
               ),
             );
-            print(resp);
+            debugPrint('$resp');
             if (resp) {
               Get.snackbar(
                 'Success',

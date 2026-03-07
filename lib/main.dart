@@ -1,6 +1,7 @@
 import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:camera/camera.dart';
 import 'package:docuhealth/contstants/app_colors.dart';
+import 'package:docuhealth/helper/get_storage_helper.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -13,10 +14,19 @@ import 'services/awsome_notifications.dart';
 List<CameraDescription> cameras = [];
 dynamic deviceToken;
 
+const bool verboseLogs =
+    bool.fromEnvironment('VERBOSE_LOGS', defaultValue: false);
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (!verboseLogs) {
+    // Silence verbose debug logs unless explicitly enabled with
+    // --dart-define=VERBOSE_LOGS=true.
+    debugPrint = (String? message, {int? wrapWidth}) {};
+  }
   await Firebase.initializeApp();
   await GetStorage.init();
+  GetStorageHelper.setinitialdata();
   await FlutterDownloader.initialize(debug: false);
   deviceToken = await FirebaseMessaging.instance.getToken(
     vapidKey:
@@ -27,7 +37,7 @@ void main() async {
     WidgetsFlutterBinding.ensureInitialized();
     cameras = await availableCameras();
   } on CameraException catch (e) {
-    print('Error in fetching the cameras: $e');
+    debugPrint('Error in fetching the cameras: $e');
   }
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
     statusBarColor: AppColors.whitebgColor,

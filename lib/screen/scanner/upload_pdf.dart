@@ -19,13 +19,12 @@ class UploadPdf extends StatefulWidget {
   final String? redirectTo;
   final int? selectedFolder;
   const UploadPdf(
-      {Key? key,
+      {super.key,
       required this.appBarTitle,
       this.redirectTo,
       this.selectedCategory,
       this.selectedFolder,
-      required this.upload})
-      : super(key: key);
+      required this.upload});
 
   @override
   State<UploadPdf> createState() => _UploadPdfState();
@@ -41,7 +40,7 @@ class _UploadPdfState extends State<UploadPdf> {
   var items = [];
   List<String> uploadedImagesPath = [];
 
-  getFolderCategoryType() async {
+  Future<void> getFolderCategoryType() async {
     switch (widget.selectedCategory) {
       case "TEST_REPORTS":
         inputHintText = "Select report";
@@ -62,7 +61,7 @@ class _UploadPdfState extends State<UploadPdf> {
     }
   }
 
-  getFolderList() async {
+  Future<void> getFolderList() async {
     final response = await baseClient.get(
         'folder/get?category=${widget.selectedCategory}', true);
 
@@ -235,8 +234,7 @@ class _UploadPdfState extends State<UploadPdf> {
                             width: double.infinity,
                             child: ElevatedButton.icon(
                               onPressed: () async {
-                                final bool response =
-                                    await showModalBottomSheet(
+                                await showModalBottomSheet(
                                   context: context,
                                   isScrollControlled: true,
                                   shape: const RoundedRectangleBorder(
@@ -252,7 +250,7 @@ class _UploadPdfState extends State<UploadPdf> {
                                 ).whenComplete(() => getFolderList());
                               },
                               style: ElevatedButton.styleFrom(
-                                primary: AppColors.primaryColor,
+                                backgroundColor: AppColors.primaryColor,
                               ),
                               icon: const Icon(Icons.add),
                               label: Text(
@@ -279,7 +277,7 @@ class _UploadPdfState extends State<UploadPdf> {
                                         ? Icons.person
                                         : Icons.folder,
                                   ),
-                                  value: dropdownvalue,
+                                  initialValue: dropdownvalue,
                                   icon: const Icon(Icons.keyboard_arrow_down),
                                   items: items.map((items) {
                                     return DropdownMenuItem(
@@ -299,8 +297,7 @@ class _UploadPdfState extends State<UploadPdf> {
                                 height: 50.h,
                                 child: ElevatedButton.icon(
                                   onPressed: () async {
-                                    final bool response =
-                                        await showModalBottomSheet(
+                                    await showModalBottomSheet(
                                       context: context,
                                       isScrollControlled: true,
                                       shape: const RoundedRectangleBorder(
@@ -316,7 +313,7 @@ class _UploadPdfState extends State<UploadPdf> {
                                     ).whenComplete(() => getFolderList());
                                   },
                                   style: ElevatedButton.styleFrom(
-                                    primary: AppColors.primaryColor,
+                                    backgroundColor: AppColors.primaryColor,
                                   ),
                                   icon: const Icon(Icons.add),
                                   label: Text(
@@ -388,7 +385,7 @@ class _UploadPdfState extends State<UploadPdf> {
                 message: const Text('Uploading...'),
               ),
             );
-            print(resp);
+            debugPrint(resp.toString());
             if (resp) {
               Get.snackbar(
                 'Success',

@@ -25,7 +25,7 @@ class DailyReminderController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future getDateWiseReminder(selectedDate) async {
+  Future<void> getDateWiseReminder(DateTime selectedDate) async {
     isLoading = true;
     notifyListeners();
     final response = await BaseClient().get(

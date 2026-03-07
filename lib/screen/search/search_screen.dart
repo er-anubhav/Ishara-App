@@ -12,7 +12,7 @@ import '../knowledge_details_screen.dart';
 import '../nearby/doctor_details_screen.dart';
 
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({Key? key}) : super(key: key);
+  const SearchScreen({super.key});
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -23,7 +23,7 @@ class _SearchScreenState extends State<SearchScreen> {
   bool isLoading = true;
   List searchData = [];
 
-  getSearchData(searchKey) async {
+  Future<void> getSearchData(String searchKey) async {
     final response = await baseClient.get('search?name=$searchKey', true);
     if (response['success']) {
       searchData = response['data'];
@@ -34,7 +34,7 @@ class _SearchScreenState extends State<SearchScreen> {
     setState(() {});
   }
 
-  Widget getBodyFromTag(tag, i) {
+  Widget getBodyFromTag(String tag, int i) {
     switch (tag) {
       case "folder":
         return Card(

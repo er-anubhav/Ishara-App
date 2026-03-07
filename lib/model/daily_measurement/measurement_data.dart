@@ -8,6 +8,7 @@ class MeasurementData {
     this.datas,
     this.attachment,
     this.comment,
+    this.isAutoFetched,
     this.date,
     this.time,
     this.deletedAt,
@@ -19,6 +20,7 @@ class MeasurementData {
   Measurements? datas;
   String? attachment;
   String? comment;
+  bool? isAutoFetched;
   String? date;
   String? time;
   dynamic deletedAt;
@@ -31,6 +33,7 @@ class MeasurementData {
         datas: Measurements.fromJson(json["datas"]),
         attachment: json["attachment"],
         comment: json["comment"],
+        isAutoFetched: json["is_auto_fetched"] == 1 || json["is_auto_fetched"] == true,
         date: json["date"],
         time: json["time"],
         deletedAt: json["deleted_at"],
@@ -43,6 +46,7 @@ class MeasurementData {
         "datas": datas?.toJson(),
         "attachment": attachment,
         "comment": comment,
+        "is_auto_fetched": isAutoFetched,
         "date": date,
         "time": time,
         "deleted_at": deletedAt,

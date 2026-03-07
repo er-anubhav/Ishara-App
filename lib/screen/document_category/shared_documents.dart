@@ -1,3 +1,4 @@
+// ignore_for_file: unused_field
 import 'package:docuhealth/screen/document_category/share_document_dialog.dart';
 import 'package:docuhealth/screen/files/files_screen.dart';
 import 'package:flutter/material.dart';
@@ -15,7 +16,7 @@ import 'my_documents.dart';
 
 class SharedDocuments extends StatefulWidget {
   final String title;
-  const SharedDocuments({Key? key, required this.title}) : super(key: key);
+  const SharedDocuments({super.key, required this.title});
 
   @override
   State<SharedDocuments> createState() => _SharedDocumentsState();
@@ -32,12 +33,12 @@ class _SharedDocumentsState extends State<SharedDocuments>
   String searchKey = '';
   String sortBy = '';
   AnimationController? _animationController;
-  Animation<Color?>? _buttonColor;
   Animation<double>? _animateIcon;
+  Animation<Color?>? _buttonColor;
   Animation<double>? _translateButton;
   final Curve _curve = Curves.easeOut;
   final double _fabHeight = 56.0;
-  var dropDownValue;
+  String? dropDownValue;
   int currentPage = 1;
   int totalpage = 1;
   final RefreshController refreshController =
@@ -46,12 +47,11 @@ class _SharedDocumentsState extends State<SharedDocuments>
   TextEditingController nameController = TextEditingController();
   TextEditingController remarkController = TextEditingController();
 
-  getData(context, currentPage) async {
+  Future<dynamic> getData(BuildContext context, int currentPage) async {
     isLoading = true;
     setState(() {});
     final resp = await baseClient.get(
-        'get/shared?$sortBy?page=$currentPage&search=$searchKey', true);
-    print(resp["data"]["data_records"]);
+        'get/shared?sort_by=$sortBy&page=$currentPage&search=$searchKey', true);
     if (resp['success']) {
       if (resp["data"]["data_records"] != null) {
         double pageCount = resp["data"]["data_records"]['total_records'] /
@@ -65,7 +65,7 @@ class _SharedDocumentsState extends State<SharedDocuments>
     setState(() {});
   }
 
-  _onRefresh() async {
+  Future<void> _onRefresh() async {
     var data = await getData(context, currentPage);
     listData = data;
     if (mounted) setState(() {});
@@ -91,7 +91,7 @@ class _SharedDocumentsState extends State<SharedDocuments>
   Future<bool> ondeleteFilePress(int id, buttonType) async {
     final resp = await baseClient.get("$buttonType/delete/$id", true);
     if (resp['success']) {
-      getData(context, currentPage);
+      if (mounted) getData(context, currentPage);
       Get.snackbar('Success', '${resp['message']}',
           backgroundColor: Colors.green);
       return true;
@@ -111,7 +111,7 @@ class _SharedDocumentsState extends State<SharedDocuments>
           };
     final resp = await baseClient.post("$buttonType/rename", data, true);
     if (resp['success']) {
-      getData(context, currentPage);
+      if (mounted) getData(context, currentPage);
       return true;
     } else {
       Get.snackbar('Failed', resp['message'],
@@ -137,7 +137,7 @@ class _SharedDocumentsState extends State<SharedDocuments>
   //   }
   // }
 
-  onBookMarkButtonPress(int id, String operation, String documentType) async {
+  Future<bool> onBookMarkButtonPress(int id, String operation, String documentType) async {
     final response = await baseClient.get(
         'bookmark/$operation?id=$id&type=$documentType', true);
     if (response['success']) {
@@ -185,7 +185,7 @@ class _SharedDocumentsState extends State<SharedDocuments>
     super.initState();
   }
 
-  animate() {
+  void animate() {
     if (!isOpened) {
       _animationController!.forward();
     } else {
@@ -205,6 +205,7 @@ class _SharedDocumentsState extends State<SharedDocuments>
         ),
         backgroundColor: AppColors.primaryColor,
         bottom: PreferredSize(
+          preferredSize: Size(double.infinity, 50.h),
           child: Padding(
             padding: EdgeInsets.all(10.r),
             child: Row(
@@ -269,7 +270,6 @@ class _SharedDocumentsState extends State<SharedDocuments>
               ],
             ),
           ),
-          preferredSize: Size(double.infinity, 50.h),
         ),
         title: Text(
           widget.title,
@@ -487,7 +487,7 @@ class _SharedDocumentsState extends State<SharedDocuments>
                         onPressed: () async {
                           if (listData[i]['tag'] == "folder") {
                             if (listData[i]['bookmark'] == "No") {
-                              final resp = await showDialog(
+                              await showDialog(
                                 context: context,
                                 builder: (context) => FutureProgressDialog(
                                   onBookMarkButtonPress(
@@ -498,7 +498,7 @@ class _SharedDocumentsState extends State<SharedDocuments>
                                 ),
                               ).whenComplete(() => _onRefresh());
                             } else {
-                              final resp = await showDialog(
+                              await showDialog(
                                 context: context,
                                 builder: (context) => FutureProgressDialog(
                                   onBookMarkButtonPress(
@@ -514,7 +514,7 @@ class _SharedDocumentsState extends State<SharedDocuments>
                             }
                           } else {
                             if (listData[i]['bookmark'] == "No") {
-                              final resp = await showDialog(
+                              await showDialog(
                                 context: context,
                                 builder: (context) => FutureProgressDialog(
                                   onBookMarkButtonPress(
@@ -525,7 +525,7 @@ class _SharedDocumentsState extends State<SharedDocuments>
                                 ),
                               ).whenComplete(() => _onRefresh());
                             } else {
-                              final resp = await showDialog(
+                              await showDialog(
                                 context: context,
                                 builder: (context) => FutureProgressDialog(
                                   onBookMarkButtonPress(
@@ -582,7 +582,7 @@ class _SharedDocumentsState extends State<SharedDocuments>
                                       ).whenComplete(() => _onRefresh());
                                     },
                                     style: ElevatedButton.styleFrom(
-                                      primary: AppColors.primaryColor,
+                                      backgroundColor: AppColors.primaryColor,
                                     ),
                                     child: const Text('Yes'),
                                   ),
@@ -595,7 +595,7 @@ class _SharedDocumentsState extends State<SharedDocuments>
                                       Get.back();
                                     },
                                     style: ElevatedButton.styleFrom(
-                                      primary: Colors.grey.shade400,
+                                      backgroundColor: Colors.grey.shade400,
                                     ),
                                     child: const Text('Cancel'),
                                   ),
@@ -613,7 +613,7 @@ class _SharedDocumentsState extends State<SharedDocuments>
                                     decoration: AppTheme
                                         .defaultDescriptionInputFieldDecoration(
                                       "${listData[i]['name']}",
-                                      const Icon(Icons.folder),
+                                      Icons.folder,
                                     ),
                                   ),
                                 ),
@@ -642,7 +642,7 @@ class _SharedDocumentsState extends State<SharedDocuments>
                                       }
                                     },
                                     style: ElevatedButton.styleFrom(
-                                      primary: AppColors.primaryColor,
+                                      backgroundColor: AppColors.primaryColor,
                                     ),
                                     child: const Text('Continue'),
                                   ),
@@ -655,7 +655,7 @@ class _SharedDocumentsState extends State<SharedDocuments>
                                       Get.back();
                                     },
                                     style: ElevatedButton.styleFrom(
-                                      primary: Colors.grey.shade400,
+                                      backgroundColor: Colors.grey.shade400,
                                     ),
                                     child: const Text('Cancel'),
                                   ),
@@ -722,7 +722,7 @@ class _SharedDocumentsState extends State<SharedDocuments>
                                       ).whenComplete(() => _onRefresh());
                                     },
                                     style: ElevatedButton.styleFrom(
-                                      primary: AppColors.primaryColor,
+                                      backgroundColor: AppColors.primaryColor,
                                     ),
                                     child: const Text('Yes'),
                                   ),
@@ -735,7 +735,7 @@ class _SharedDocumentsState extends State<SharedDocuments>
                                       Get.back();
                                     },
                                     style: ElevatedButton.styleFrom(
-                                      primary: Colors.grey.shade400,
+                                      backgroundColor: Colors.grey.shade400,
                                     ),
                                     child: const Text('Cancel'),
                                   ),
@@ -757,7 +757,7 @@ class _SharedDocumentsState extends State<SharedDocuments>
                                         decoration: AppTheme
                                             .defaultDescriptionInputFieldDecoration(
                                           "${listData[i]['name'] ?? 'File name'}",
-                                          const Icon(Icons.folder),
+                                          Icons.folder,
                                         ),
                                       ),
                                       SizedBox(
@@ -768,7 +768,7 @@ class _SharedDocumentsState extends State<SharedDocuments>
                                         decoration: AppTheme
                                             .defaultDescriptionInputFieldDecoration(
                                           "${listData[i]['remarks'] ?? 'Remarks'}",
-                                          const Icon(Icons.folder),
+                                          Icons.folder,
                                         ),
                                       ),
                                     ],
@@ -800,7 +800,7 @@ class _SharedDocumentsState extends State<SharedDocuments>
                                       }
                                     },
                                     style: ElevatedButton.styleFrom(
-                                      primary: AppColors.primaryColor,
+                                      backgroundColor: AppColors.primaryColor,
                                     ),
                                     child: const Text('Continue'),
                                   ),
@@ -813,7 +813,7 @@ class _SharedDocumentsState extends State<SharedDocuments>
                                       Get.back();
                                     },
                                     style: ElevatedButton.styleFrom(
-                                      primary: Colors.grey.shade400,
+                                      backgroundColor: Colors.grey.shade400,
                                     ),
                                     child: const Text('Cancel'),
                                   ),

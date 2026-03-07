@@ -4,7 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'contstants/app_colors.dart';
 
 class AppTheme {
-  static InputDecoration defaultInputFieldDecoration(hintText, icon) {
+  static InputDecoration defaultInputFieldDecoration(String? hintText, IconData? icon) {
     return InputDecoration(
       hintText: hintText,
       filled: true,
@@ -33,7 +33,7 @@ class AppTheme {
   }
 
   static InputDecoration defaultDescriptionInputFieldDecoration(
-      hintText, icon) {
+      String? hintText, IconData? icon) {
     return InputDecoration(
       hintText: hintText,
       filled: true,

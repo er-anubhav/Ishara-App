@@ -18,13 +18,13 @@ class BookMarksScreen extends StatefulWidget {
   final String appBarTitle;
   final String categoryName;
   const BookMarksScreen({
-    Key? key,
+    super.key,
     this.fileId,
     required this.documentType,
     required this.appBarTitle,
     required this.categoryName,
     required this.operationType,
-  }) : super(key: key);
+  });
 
   @override
   State<BookMarksScreen> createState() => _PharmacyRecordState();
@@ -44,8 +44,6 @@ class _PharmacyRecordState extends State<BookMarksScreen>
   // Animation<Color?>? _buttonColor;
   // Animation<double>? _animateIcon;
   // Animation<double>? _translateButton;
-  final Curve _curve = Curves.easeOut;
-  final double _fabHeight = 56.0;
   // var dropDownValue;
   int currentPage = 1;
   int totalpage = 1;
@@ -55,13 +53,12 @@ class _PharmacyRecordState extends State<BookMarksScreen>
   TextEditingController nameController = TextEditingController();
   TextEditingController remarkController = TextEditingController();
 
-  getData(context, currentPage) async {
+  Future<dynamic> getData(BuildContext context, int currentPage) async {
     isLoading = true;
     setState(() {});
     final resp = await baseClient.get(
-        'bookmark/get?sort_by=$sortBy?page=$currentPage&search=$searchKey',
+        'bookmark/get?sort_by=$sortBy&page=$currentPage&search=$searchKey',
         true);
-    print(resp["data"]["data_records"]);
     if (resp['success']) {
       if (resp["data"]["data_records"] != null) {
         double pageCount = resp["data"]["data_records"]['total_records'] /
@@ -75,7 +72,7 @@ class _PharmacyRecordState extends State<BookMarksScreen>
     if (mounted) setState(() {});
   }
 
-  _onRefresh() async {
+  Future<void> _onRefresh() async {
     var data = await getData(context, currentPage);
     listData = data;
     if (mounted) setState(() {});
@@ -101,7 +98,7 @@ class _PharmacyRecordState extends State<BookMarksScreen>
   Future<bool> ondeleteFilePress(int id, buttonType) async {
     final resp = await baseClient.get("$buttonType/delete/$id", true);
     if (resp['success']) {
-      getData(context, currentPage);
+      if (mounted) getData(context, currentPage);
       Get.snackbar('Success', '${resp['message']}',
           backgroundColor: Colors.green);
       return true;
@@ -121,7 +118,7 @@ class _PharmacyRecordState extends State<BookMarksScreen>
           };
     final resp = await baseClient.post("$buttonType/rename", data, true);
     if (resp['success']) {
-      getData(context, currentPage);
+      if (mounted) getData(context, currentPage);
       return true;
     } else {
       Get.snackbar('Failed', resp['message'],
@@ -130,7 +127,7 @@ class _PharmacyRecordState extends State<BookMarksScreen>
     }
   }
 
-  onPasteButtonPress() async {
+  Future<bool> onPasteButtonPress() async {
     var data = widget.documentType == "folder"
         ? {"folder_id": "${widget.fileId}", "distination": widget.categoryName}
         : {"file_id": "${widget.fileId}", "distination": widget.categoryName};
@@ -147,7 +144,7 @@ class _PharmacyRecordState extends State<BookMarksScreen>
     }
   }
 
-  onBookMarkButtonPress(int id, String operation, String documentType) async {
+  Future<bool> onBookMarkButtonPress(int id, String operation, String documentType) async {
     final response = await baseClient.get(
         'bookmark/$operation?id=$id&type=$documentType', true);
     if (response['success']) {
@@ -161,7 +158,7 @@ class _PharmacyRecordState extends State<BookMarksScreen>
     }
   }
 
-  animate() {
+  void animate() {
     if (!isOpened) {
       _animationController!.forward();
     } else {
@@ -181,6 +178,7 @@ class _PharmacyRecordState extends State<BookMarksScreen>
         ),
         backgroundColor: AppColors.primaryColor,
         bottom: PreferredSize(
+          preferredSize: Size(double.infinity, 50.h),
           child: Padding(
             padding: EdgeInsets.all(10.r),
             child: Row(
@@ -245,7 +243,6 @@ class _PharmacyRecordState extends State<BookMarksScreen>
               ],
             ),
           ),
-          preferredSize: Size(double.infinity, 50.h),
         ),
         title: Text(
           widget.appBarTitle,
@@ -377,7 +374,7 @@ class _PharmacyRecordState extends State<BookMarksScreen>
                               onPressed: () async {
                                 if (listData[i]['tag'] == "folder") {
                                   if (listData[i]['bookmark'] == "No") {
-                                    final resp = await showDialog(
+                                    await showDialog(
                                       context: context,
                                       builder: (context) =>
                                           FutureProgressDialog(
@@ -391,7 +388,7 @@ class _PharmacyRecordState extends State<BookMarksScreen>
                                       ),
                                     ).whenComplete(() => _onRefresh());
                                   } else {
-                                    final resp = await showDialog(
+                                    await showDialog(
                                       context: context,
                                       builder: (context) =>
                                           FutureProgressDialog(
@@ -408,7 +405,7 @@ class _PharmacyRecordState extends State<BookMarksScreen>
                                   }
                                 } else {
                                   if (listData[i]['bookmark'] == "No") {
-                                    final resp = await showDialog(
+                                    await showDialog(
                                       context: context,
                                       builder: (context) =>
                                           FutureProgressDialog(
@@ -422,7 +419,7 @@ class _PharmacyRecordState extends State<BookMarksScreen>
                                       ),
                                     ).whenComplete(() => _onRefresh());
                                   } else {
-                                    final resp = await showDialog(
+                                    await showDialog(
                                       context: context,
                                       builder: (context) =>
                                           FutureProgressDialog(
@@ -480,7 +477,7 @@ class _PharmacyRecordState extends State<BookMarksScreen>
                                             ).whenComplete(() => _onRefresh());
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            primary: AppColors.primaryColor,
+                                            backgroundColor: AppColors.primaryColor,
                                           ),
                                           child: const Text('Yes'),
                                         ),
@@ -493,7 +490,7 @@ class _PharmacyRecordState extends State<BookMarksScreen>
                                             Get.back();
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            primary: Colors.grey.shade400,
+                                            backgroundColor: Colors.grey.shade400,
                                           ),
                                           child: const Text('Cancel'),
                                         ),
@@ -544,7 +541,7 @@ class _PharmacyRecordState extends State<BookMarksScreen>
                                             ).whenComplete(() => _onRefresh());
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            primary: AppColors.primaryColor,
+                                            backgroundColor: AppColors.primaryColor,
                                           ),
                                           child: const Text('Yes'),
                                         ),
@@ -557,7 +554,7 @@ class _PharmacyRecordState extends State<BookMarksScreen>
                                             Get.back();
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            primary: Colors.grey.shade400,
+                                            backgroundColor: Colors.grey.shade400,
                                           ),
                                           child: const Text('Cancel'),
                                         ),

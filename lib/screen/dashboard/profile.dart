@@ -1,5 +1,4 @@
 import 'package:docuhealth/contstants/app_colors.dart';
-import 'package:docuhealth/contstants/app_colors.dart';
 import 'package:docuhealth/main.dart';
 import 'package:docuhealth/screen/cms_screen.dart';
 import 'package:docuhealth/screen/user/add_more_family_member.dart';
@@ -14,7 +13,7 @@ import '../../services/base_client.dart';
 import '../home_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({Key? key}) : super(key: key);
+  const ProfileScreen({super.key});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -24,30 +23,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
   BaseClient baseClient = BaseClient();
   List profiles = [];
 
-  getUserProfile(context) async {
-    final response = await baseClient.get('profiles', true);
-    profiles = response['data']['profiles'];
-    if (mounted) {
-      setState(() {});
+  Future<void> getUserProfile(BuildContext context) async {
+    try {
+      final response = await baseClient.get('profiles', true);
+      if (response is Map && response['success'] == true) {
+        final data = response['data'];
+        if (data is Map && data['profiles'] is List) {
+          profiles = data['profiles'];
+        } else if (data is List) {
+          profiles = data;
+        } else {
+          profiles = [];
+        }
+      } else {
+        profiles = [];
+      }
+    } catch (_) {
+      profiles = [];
+    } finally {
+      if (mounted) {
+        setState(() {});
+      }
     }
   }
 
-  Future<bool> onProfileTap(profileId) async {
+  Future<bool> onProfileTap(int profileId) async {
     var data = {"profile_id": "$profileId", "device_token": deviceToken};
-    final response = await baseClient.post('profile-login', data, true);
-
-    if (response['success']) {
-      box.write('id', response['data']['id']);
-      box.write('username', response['data']['name']);
-      box.write('mobileno', response['data']['phone']);
-      box.write('email', response['data']['email']);
-      box.write('imagePath', response['data']['icon']);
-      box.write('access_token', response['token']);
-      getUserProfile(context);
-      Get.snackbar("Success", response['message']);
-      return true;
-    } else {
-      Get.snackbar("Failed", response['message']);
+    try {
+      final response = await baseClient.post('profile-login', data, true);
+      if (response is Map && response['success'] == true) {
+        box.write('id', response['data']['id']);
+        box.write('username', response['data']['name']);
+        box.write('mobileno', response['data']['phone']);
+        box.write('email', response['data']['email']);
+        box.write('imagePath', response['data']['icon']);
+        box.write('access_token', response['token']);
+        box.write('has_profile_context', true);
+        if (mounted) getUserProfile(context);
+        Get.snackbar("Success", response['message']);
+        return true;
+      }
+      if (response is Map) {
+        Get.snackbar("Failed", response['message']?.toString() ?? "Failed");
+      }
+      return false;
+    } catch (_) {
       return false;
     }
   }
@@ -100,7 +120,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ? InkWell(
                           onTap: () async {
                             Get.to(const AddNewFamilyMember())!.whenComplete(
-                              () => getUserProfile(context),
+                              () {
+                                // ignore: use_build_context_synchronously
+                                if (mounted) getUserProfile(context);
+                              },
                             );
                           },
                           child: Container(
@@ -152,7 +175,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ),
                               ),
                             );
-                            if (response) {
+                            if (response == true) {
                               Get.off(const HomePage(
                                 currentIndex: 0,
                               ));
@@ -160,10 +183,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           },
                           child: Container(
                             margin: EdgeInsets.symmetric(horizontal: 5.w),
-                            padding: profiles[i]['active']
+                            padding: profiles[i]['active'] == true
                                 ? EdgeInsets.all(15.r)
                                 : EdgeInsets.all(5.r),
-                            decoration: profiles[i]['active']
+                            decoration: profiles[i]['active'] == true
                                 ? BoxDecoration(
                                     color: AppColors.whitebgColor,
                                     borderRadius: BorderRadius.circular(10.r),
@@ -182,8 +205,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               children: [
                                 CircleAvatar(
                                   radius: 25.r,
-                                  backgroundImage:
-                                      NetworkImage(profiles[i]['icon']),
+                                  backgroundImage: (() {
+                                    final iconUrl =
+                                        (profiles[i]['icon'] ?? '').toString();
+                                    if (iconUrl.isEmpty ||
+                                        iconUrl == 'null' ||
+                                        !iconUrl.startsWith('http')) {
+                                      return null;
+                                    }
+                                    return NetworkImage(iconUrl);
+                                  })(),
+                                  child: (() {
+                                    final iconUrl =
+                                        (profiles[i]['icon'] ?? '').toString();
+                                    if (iconUrl.isEmpty ||
+                                        iconUrl == 'null' ||
+                                        !iconUrl.startsWith('http')) {
+                                      return Icon(
+                                        Icons.person,
+                                        color: AppColors.primaryColor,
+                                      );
+                                    }
+                                    return null;
+                                  })(),
                                 ),
                                 SizedBox(
                                   height: 5.h,
@@ -223,11 +267,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     }),
                     leading: CircleAvatar(
                       radius: 20,
+                      backgroundColor: Colors.grey.shade200,
                       child: Icon(
                         Icons.person,
                         color: AppColors.primaryColor,
                       ),
-                      backgroundColor: Colors.grey.shade200,
                     ),
                     title: Text(
                       "My Account",
@@ -261,11 +305,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     },
                     leading: CircleAvatar(
                       radius: 20,
+                      backgroundColor: Colors.grey.shade100,
                       child: Icon(
                         Icons.person,
                         color: AppColors.primaryColor,
                       ),
-                      backgroundColor: Colors.grey.shade100,
                     ),
                     title: Text(
                       "Contact Us",
@@ -299,11 +343,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     },
                     leading: CircleAvatar(
                       radius: 20,
+                      backgroundColor: Colors.grey.shade200,
                       child: Icon(
                         Icons.lock_person,
                         color: AppColors.primaryColor,
                       ),
-                      backgroundColor: Colors.grey.shade200,
                     ),
                     title: Text(
                       "Term of uses",
@@ -334,11 +378,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     },
                     leading: CircleAvatar(
                       radius: 20,
+                      backgroundColor: Colors.grey.shade200,
                       child: Icon(
                         Icons.privacy_tip,
                         color: AppColors.primaryColor,
                       ),
-                      backgroundColor: Colors.grey.shade200,
                     ),
                     title: Text(
                       "Privacy policy",
@@ -378,7 +422,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               Get.offNamedUntil('/Splash', (route) => false);
                             },
                             style: ElevatedButton.styleFrom(
-                              primary: AppColors.primaryColor,
+                              backgroundColor: AppColors.primaryColor,
                             ),
                             child: const Text('Continue'),
                           ),
@@ -391,7 +435,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               Get.back();
                             },
                             style: ElevatedButton.styleFrom(
-                              primary: Colors.grey.shade400,
+                              backgroundColor: Colors.grey.shade400,
                             ),
                             child: const Text('Cancel'),
                           ),
@@ -401,11 +445,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     },
                     leading: CircleAvatar(
                       radius: 20,
+                      backgroundColor: Colors.grey.shade200,
                       child: Icon(
                         Icons.logout,
                         color: AppColors.primaryColor,
                       ),
-                      backgroundColor: Colors.grey.shade200,
                     ),
                     title: Text(
                       "Log out",
@@ -456,11 +500,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     },
                     leading: CircleAvatar(
                       radius: 20,
+                      backgroundColor: Colors.grey.shade200,
                       child: Icon(
                         Icons.message,
                         color: AppColors.primaryColor,
                       ),
-                      backgroundColor: Colors.grey.shade200,
                     ),
                     title: Text(
                       "FAQ's",

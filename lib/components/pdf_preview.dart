@@ -14,7 +14,7 @@ import '../services/base_client.dart';
 import '../theme.dart';
 
 class PdfPreviewScreen extends StatefulWidget {
-  final documentUrl;
+  final dynamic documentUrl;
   final int? fileId;
   final String? fileName;
   final String? selectedCategory;
@@ -23,7 +23,7 @@ class PdfPreviewScreen extends StatefulWidget {
   final bool isNetworkImage;
   final int? selectedFolder;
   const PdfPreviewScreen({
-    Key? key,
+    super.key,
     required this.documentUrl,
     required this.isFromFile,
     required this.isNetworkImage,
@@ -32,7 +32,7 @@ class PdfPreviewScreen extends StatefulWidget {
     this.fileId,
     this.selectedFolder,
     this.selectedCategory,
-  }) : super(key: key);
+  });
 
   @override
   State<PdfPreviewScreen> createState() => _PdfPreviewScreenState();
@@ -121,7 +121,7 @@ class _PdfPreviewScreenState extends State<PdfPreviewScreen> {
                               ).whenComplete(() => Get.back());
                             },
                             style: ElevatedButton.styleFrom(
-                              primary: AppColors.primaryColor,
+                              backgroundColor: AppColors.primaryColor,
                             ),
                             child: const Text('Yes'),
                           ),
@@ -134,7 +134,7 @@ class _PdfPreviewScreenState extends State<PdfPreviewScreen> {
                               Get.back();
                             },
                             style: ElevatedButton.styleFrom(
-                              primary: Colors.grey.shade400,
+                              backgroundColor: Colors.grey.shade400,
                             ),
                             child: const Text('Cancel'),
                           ),
@@ -155,7 +155,7 @@ class _PdfPreviewScreenState extends State<PdfPreviewScreen> {
                                 decoration: AppTheme
                                     .defaultDescriptionInputFieldDecoration(
                                   widget.fileName,
-                                  const Icon(Icons.folder),
+                                  Icons.folder,
                                 ),
                               ),
                               SizedBox(
@@ -166,7 +166,7 @@ class _PdfPreviewScreenState extends State<PdfPreviewScreen> {
                                 decoration: AppTheme
                                     .defaultDescriptionInputFieldDecoration(
                                   widget.remarks,
-                                  const Icon(Icons.folder),
+                                  Icons.folder,
                                 ),
                               ),
                             ],
@@ -196,7 +196,7 @@ class _PdfPreviewScreenState extends State<PdfPreviewScreen> {
                               }
                             },
                             style: ElevatedButton.styleFrom(
-                              primary: AppColors.primaryColor,
+                              backgroundColor: AppColors.primaryColor,
                             ),
                             child: const Text('Continue'),
                           ),
@@ -209,7 +209,7 @@ class _PdfPreviewScreenState extends State<PdfPreviewScreen> {
                               Get.back();
                             },
                             style: ElevatedButton.styleFrom(
-                              primary: Colors.grey.shade400,
+                              backgroundColor: Colors.grey.shade400,
                             ),
                             child: const Text('Cancel'),
                           ),
@@ -274,7 +274,7 @@ class _PdfPreviewScreenState extends State<PdfPreviewScreen> {
                 )
               : ElevatedButton(
                   style:
-                      ElevatedButton.styleFrom(primary: AppColors.primaryColor),
+                      ElevatedButton.styleFrom(backgroundColor: AppColors.primaryColor),
                   onPressed: () {
                     Get.to(widget.selectedCategory == null
                         ? SelectFolderCategory(

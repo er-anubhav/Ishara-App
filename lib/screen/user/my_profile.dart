@@ -12,7 +12,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 
 class MyProfileEdit extends StatefulWidget {
-  const MyProfileEdit({Key? key}) : super(key: key);
+  const MyProfileEdit({super.key});
 
   @override
   MapScreenState createState() => MapScreenState();
@@ -47,7 +47,7 @@ class MapScreenState extends State<MyProfileEdit>
     'Wife',
   ];
 
-  getProfile(context) async {
+  Future<void> getProfile(BuildContext context) async {
     final resp = await baseClient.get('profile/get', true);
     if (resp['success']) {
       nameController.text = resp['data']['profile']['name'];
@@ -64,7 +64,7 @@ class MapScreenState extends State<MyProfileEdit>
     }
   }
 
-  Future<bool> updateProfile(context) async {
+  Future<bool> updateProfile(BuildContext context) async {
     var data = !isShowselfEdit
         ? {
             "relation": relationController.text,
@@ -143,7 +143,21 @@ class MapScreenState extends State<MyProfileEdit>
                                           : CircleAvatar(
                                               radius: 70.r,
                                               backgroundImage:
-                                                  NetworkImage(profileUrl),
+                                                  (profileUrl.isNotEmpty &&
+                                                          profileUrl
+                                                              .startsWith('http'))
+                                                      ? NetworkImage(profileUrl)
+                                                      : null,
+                                              child: (profileUrl.isNotEmpty &&
+                                                      profileUrl
+                                                          .startsWith('http'))
+                                                  ? null
+                                                  : Icon(
+                                                      Icons.person,
+                                                      color:
+                                                          AppColors.primaryColor,
+                                                      size: 48.r,
+                                                    ),
                                             ),
                                     ),
                                   ],
@@ -192,11 +206,11 @@ class MapScreenState extends State<MyProfileEdit>
                                               MainAxisAlignment.spaceBetween,
                                           mainAxisSize: MainAxisSize.max,
                                           children: <Widget>[
-                                            Column(
+                                            const Column(
                                               mainAxisAlignment:
                                                   MainAxisAlignment.start,
                                               mainAxisSize: MainAxisSize.min,
-                                              children: const <Widget>[
+                                              children: <Widget>[
                                                 Text(
                                                   'Personal Information',
                                                   style: TextStyle(
@@ -218,8 +232,8 @@ class MapScreenState extends State<MyProfileEdit>
                                             )
                                           ],
                                         )),
-                                    Padding(
-                                        padding: const EdgeInsets.only(
+                                    const Padding(
+                                        padding: EdgeInsets.only(
                                             left: 16.0, right: 16.0, top: 16.0),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.max,
@@ -228,7 +242,7 @@ class MapScreenState extends State<MyProfileEdit>
                                               mainAxisAlignment:
                                                   MainAxisAlignment.start,
                                               mainAxisSize: MainAxisSize.min,
-                                              children: const <Widget>[
+                                              children: <Widget>[
                                                 Text(
                                                   'Name',
                                                   style: TextStyle(
@@ -260,8 +274,8 @@ class MapScreenState extends State<MyProfileEdit>
                                             ),
                                           ],
                                         )),
-                                    Padding(
-                                        padding: const EdgeInsets.only(
+                                    const Padding(
+                                        padding: EdgeInsets.only(
                                             left: 16.0, right: 16.0, top: 16.0),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.max,
@@ -270,7 +284,7 @@ class MapScreenState extends State<MyProfileEdit>
                                               mainAxisAlignment:
                                                   MainAxisAlignment.start,
                                               mainAxisSize: MainAxisSize.min,
-                                              children: const <Widget>[
+                                              children: <Widget>[
                                                 Text(
                                                   'Emergency Contact',
                                                   style: TextStyle(
@@ -303,8 +317,8 @@ class MapScreenState extends State<MyProfileEdit>
                                             ),
                                           ],
                                         )),
-                                    Padding(
-                                        padding: const EdgeInsets.only(
+                                    const Padding(
+                                        padding: EdgeInsets.only(
                                             left: 16.0, right: 16.0, top: 16.0),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.max,
@@ -313,7 +327,7 @@ class MapScreenState extends State<MyProfileEdit>
                                               mainAxisAlignment:
                                                   MainAxisAlignment.start,
                                               mainAxisSize: MainAxisSize.min,
-                                              children: const <Widget>[
+                                              children: <Widget>[
                                                 Text(
                                                   'Phone number',
                                                   style: TextStyle(
@@ -372,11 +386,11 @@ class MapScreenState extends State<MyProfileEdit>
                                                 MainAxisAlignment.spaceBetween,
                                             mainAxisSize: MainAxisSize.max,
                                             children: <Widget>[
-                                              Column(
+                                              const Column(
                                                 mainAxisAlignment:
                                                     MainAxisAlignment.start,
                                                 mainAxisSize: MainAxisSize.min,
-                                                children: const <Widget>[
+                                                children: <Widget>[
                                                   Text(
                                                     'Personal Information',
                                                     style: TextStyle(
@@ -431,6 +445,7 @@ class MapScreenState extends State<MyProfileEdit>
                                             if (v!.isEmpty) {
                                               return "Name is required";
                                             }
+                                            return null;
                                           },
                                           inputFormatters: [
                                             FilteringTextInputFormatter.allow(
@@ -468,12 +483,13 @@ class MapScreenState extends State<MyProfileEdit>
                                             "Select relation",
                                             Icons.group,
                                           ),
-                                          value: dropdownvalue,
+                                          initialValue: dropdownvalue,
                                           validator: (v) {
                                             if (relationController
                                                 .text.isEmpty) {
                                               return "Relation is required";
                                             }
+                                            return null;
                                           },
                                           icon: const Icon(
                                               Icons.keyboard_arrow_down),
@@ -511,13 +527,13 @@ class MapScreenState extends State<MyProfileEdit>
   }
 
   Future getImage(bool gallery) async {
-    ImagePicker _picker = ImagePicker();
+    ImagePicker picker = ImagePicker();
     dynamic pickedFile;
 
     if (gallery) {
-      pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+      pickedFile = await picker.pickImage(source: ImageSource.gallery);
     } else {
-      pickedFile = await _picker.pickImage(source: ImageSource.camera);
+      pickedFile = await picker.pickImage(source: ImageSource.camera);
     }
 
     setState(() {
@@ -543,11 +559,12 @@ class MapScreenState extends State<MyProfileEdit>
         mainAxisAlignment: MainAxisAlignment.start,
         children: <Widget>[
           Expanded(
+            flex: 2,
             child: Padding(
               padding: const EdgeInsets.only(left: 8.0),
               child: SizedBox(
                   child: ElevatedButton(
-                style: ElevatedButton.styleFrom(primary: Colors.red),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                 child: const Padding(
                   padding: EdgeInsets.all(16.0),
                   child: Text("Cancel"),
@@ -560,29 +577,28 @@ class MapScreenState extends State<MyProfileEdit>
                 },
               )),
             ),
-            flex: 2,
           ),
           SizedBox(
             width: 10.w,
           ),
           Expanded(
+            flex: 2,
             child: Padding(
               padding: const EdgeInsets.only(right: 8.0),
               child: SizedBox(
                   child: ElevatedButton(
-                style: ElevatedButton.styleFrom(primary: Colors.green),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
                 child: const Padding(
                   padding: EdgeInsets.all(16.0),
                   child: Text("Save"),
                 ),
                 onPressed: () async {
-                  final editProfile = await showDialog(
+                  await showDialog(
                     context: context,
                     builder: (context) => FutureProgressDialog(
                       updateProfile(context),
                     ),
                   );
-                  print(editProfile);
                   setState(() {
                     _status = true;
                     FocusScope.of(context).requestFocus(FocusNode());
@@ -590,7 +606,6 @@ class MapScreenState extends State<MyProfileEdit>
                 },
               )),
             ),
-            flex: 2,
           ),
         ],
       ),
@@ -612,46 +627,6 @@ class MapScreenState extends State<MyProfileEdit>
         setState(() {
           _status = false;
         });
-      },
-    );
-  }
-
-  void _settingModalBottomSheet(context) {
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext bc) {
-        return Container(
-          color: Colors.white,
-          child: Wrap(
-            children: <Widget>[
-              ListTile(
-                leading: Icon(
-                  Icons.image_outlined,
-                  color: AppColors.primaryColor,
-                ),
-                title: Text(
-                  'Gallery',
-                  style: TextStyle(color: AppColors.primaryColor),
-                ),
-                onTap: () async {
-                  getImage(true);
-                },
-              ),
-              ListTile(
-                  leading: Icon(
-                    Icons.camera_alt_outlined,
-                    color: AppColors.primaryColor,
-                  ),
-                  title: Text(
-                    'Camera',
-                    style: TextStyle(color: AppColors.primaryColor),
-                  ),
-                  onTap: () async {
-                    getImage(false);
-                  }),
-            ],
-          ),
-        );
       },
     );
   }

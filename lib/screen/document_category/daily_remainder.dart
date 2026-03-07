@@ -14,7 +14,7 @@ import '../../model/daily_reminders/reminder_data.dart';
 
 class DailyReminder extends StatefulWidget {
   final String title;
-  const DailyReminder({Key? key, required this.title}) : super(key: key);
+  const DailyReminder({super.key, required this.title});
 
   @override
   State<DailyReminder> createState() => _DailyReminderState();
@@ -26,14 +26,14 @@ class _DailyReminderState extends State<DailyReminder> {
 
   @override
   void initState() {
+    super.initState();
     Future.delayed(Duration.zero, () {
+      if (!mounted) return;
       Provider.of<DailyReminderController>(context, listen: false)
           .getDailyReminder();
       Provider.of<DailyReminderController>(context, listen: false)
           .getDateWiseReminder(selectedDate);
     });
-
-    super.initState();
   }
 
   @override
@@ -103,8 +103,11 @@ class _DailyReminderState extends State<DailyReminder> {
               () => Future.delayed(
                 Duration.zero,
                 () {
+                  if (!mounted) return;
+                  // ignore: use_build_context_synchronously
                   Provider.of<DailyReminderController>(context, listen: false)
                       .getDailyReminder();
+                  // ignore: use_build_context_synchronously
                   Provider.of<DailyReminderController>(context, listen: false)
                       .getDateWiseReminder(selectedDate);
                 },
@@ -355,7 +358,7 @@ class _DailyReminderState extends State<DailyReminder> {
                                             Row(
                                               children: [
                                                 CupertinoSwitch(
-                                                  activeColor:
+                                                  activeTrackColor:
                                                       AppColors.primaryColor,
                                                   value:
                                                       allReminders[i].status!,

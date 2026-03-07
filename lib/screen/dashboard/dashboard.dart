@@ -19,7 +19,7 @@ import '../nearby/doctor_details_screen.dart';
 import '../notification_screen.dart';
 
 class Dashboard extends StatefulWidget {
-  const Dashboard({Key? key}) : super(key: key);
+  const Dashboard({super.key});
 
   @override
   State<Dashboard> createState() => _DashboardState();
@@ -37,6 +37,7 @@ class _DashboardState extends State<Dashboard> {
   @override
   void initState() {
     Future.delayed(Duration.zero, () {
+      if (!mounted) return;
       dashBoardController =
           Provider.of<DashBoardController>(context, listen: false);
       dashBoardController.getBannersData(context);
@@ -65,7 +66,6 @@ class _DashboardState extends State<Dashboard> {
 
   @override
   void dispose() {
-    // TODO: implement dispose
     timer?.cancel();
     pageController.dispose();
     super.dispose();
@@ -340,6 +340,78 @@ class _DashboardState extends State<Dashboard> {
                         ),
                       );
                     },
+                  ),
+                ),
+              ),
+              Divider(
+                thickness: 0.5,
+                color: AppColors.lightGreyTextColor,
+              ),
+              // Device Connections Card
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 15.w, vertical: 10.h),
+                child: InkWell(
+                  onTap: () {
+                    Get.toNamed('/Device_Connections');
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(16.r),
+                    decoration: BoxDecoration(
+                      gradient: AppColors.primaryLinearGradient,
+                      borderRadius: BorderRadius.circular(20.r),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primaryColor.withOpacity(0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(12.r),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryColor.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(15.r),
+                          ),
+                          child: Icon(
+                            Icons.bluetooth_connected,
+                            size: 32.r,
+                            color: AppColors.primaryColor,
+                          ),
+                        ),
+                        SizedBox(width: 16.w),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Device Connections",
+                                style: TextStyle(
+                                  fontSize: 16.sp,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.selectedIconColor,
+                                ),
+                              ),
+                              SizedBox(height: 4.h),
+                              Text(
+                                "Connect BLE devices & MQTT",
+                                style: TextStyle(
+                                  fontSize: 12.sp,
+                                  color: AppColors.greyTextColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          Icons.arrow_forward_ios,
+                          size: 18.r,
+                          color: AppColors.primaryColor,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -625,7 +697,7 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 
-  slider(List<BannerData> images, pagePosition, active) {
+  InkWell slider(List<BannerData> images, pagePosition, active) {
     return InkWell(
       onTap: () {
         Utils.launchInBrowser(Uri.parse(images[pagePosition].url!));
@@ -645,7 +717,7 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 
-  imageAnimation(PageController animation, images, pagePosition) {
+  AnimatedBuilder imageAnimation(PageController animation, images, pagePosition) {
     return AnimatedBuilder(
       animation: animation,
       builder: (context, widget) {
@@ -662,7 +734,7 @@ class _DashboardState extends State<Dashboard> {
     );
   }
 
-  List<Widget> indicators(imagesLength, currentIndex) {
+  List<Widget> indicators(int imagesLength, int currentIndex) {
     return List<Widget>.generate(imagesLength, (index) {
       return Container(
         margin: const EdgeInsets.all(3),

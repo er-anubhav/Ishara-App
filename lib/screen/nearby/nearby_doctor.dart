@@ -14,8 +14,7 @@ class NearNyDoctor extends StatefulWidget {
   final int categoryId;
   final String appBarTitle;
   const NearNyDoctor(
-      {Key? key, required this.categoryId, required this.appBarTitle})
-      : super(key: key);
+      {super.key, required this.categoryId, required this.appBarTitle});
 
   @override
   State<NearNyDoctor> createState() => _NearNyDoctorState();
@@ -35,7 +34,7 @@ class _NearNyDoctorState extends State<NearNyDoctor> {
   final RefreshController refreshController =
       RefreshController(initialRefresh: true);
 
-  getNearByDoctor() async {
+  Future<void> getNearByDoctor() async {
     final filterResponse = await baseClient.get('filters', true);
     if (filterResponse['success']) {
       filterListData = filterResponse['data'];
@@ -44,12 +43,12 @@ class _NearNyDoctorState extends State<NearNyDoctor> {
     }
   }
 
-  getData(context, currentPage) async {
+  Future<dynamic> getData(BuildContext context, int currentPage) async {
     final resp = await baseClient.get(
       'medico-search?name=$searchKey&category=${widget.categoryId}&$filterVariable=$filterText&page=$currentPage',
       true,
     );
-    print(resp["data"]["data_records"]);
+    debugPrint(resp["data"]["data_records"].toString());
     if (resp['success']) {
       if (resp["data"]["data_records"] != null) {
         double pageCount = resp["data"]["data_records"]['total_records'] /
@@ -61,7 +60,7 @@ class _NearNyDoctorState extends State<NearNyDoctor> {
     }
   }
 
-  _onRefresh() async {
+  Future<void> _onRefresh() async {
     var data = await getData(context, currentPage);
     doctor = data;
     if (mounted) setState(() {});
@@ -102,6 +101,7 @@ class _NearNyDoctorState extends State<NearNyDoctor> {
         ),
         backgroundColor: AppColors.primaryColor,
         bottom: PreferredSize(
+          preferredSize: Size(double.infinity, 50.h),
           child: Padding(
             padding: EdgeInsets.all(10.r),
             child: Row(
@@ -143,8 +143,9 @@ class _NearNyDoctorState extends State<NearNyDoctor> {
                     filterVariable = response['filter_var'];
                     filterText = response['filter_data'];
 
-                    if (response != null && response != "") {
+                    if (response != null && response != "" && mounted) {
                       await showDialog(
+                        // ignore: use_build_context_synchronously
                         context: context,
                         builder: (context) => FutureProgressDialog(
                           _onRefresh(),
@@ -163,7 +164,6 @@ class _NearNyDoctorState extends State<NearNyDoctor> {
               ],
             ),
           ),
-          preferredSize: Size(double.infinity, 50.h),
         ),
         title: Text(
           widget.appBarTitle,

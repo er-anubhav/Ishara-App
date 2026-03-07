@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class NotificationScreen extends StatefulWidget {
-  const NotificationScreen({Key? key}) : super(key: key);
+  const NotificationScreen({super.key});
 
   @override
   State<NotificationScreen> createState() => _NotificationScreenState();
@@ -15,7 +15,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
   bool isLoading = true;
   List notification = [];
 
-  getNotification(context) async {
+  Future<void> getNotification(BuildContext context) async {
     final response = await BaseClient().get('notifications', true);
     if (response['success']) {
       notification = response['data'];

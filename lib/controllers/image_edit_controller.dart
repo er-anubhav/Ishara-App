@@ -7,10 +7,10 @@ import '../screen/scanner/image_preview_edit_screen.dart';
 
 class ImageEditController extends ChangeNotifier {
   Uint8List? blackAndWhite, magicColor, original;
-  Future<bool> loadFilter(_currentPage) async {
+  Future<bool> loadFilter(int currentPage) async {
     original = await Cv2.bilateralFilter(
       pathFrom: CVPathFrom.GALLERY_CAMERA,
-      pathString: finalImages[_currentPage].path,
+      pathString: finalImages[currentPage].path,
       diameter: 20,
       sigmaColor: 75,
       sigmaSpace: 75,
@@ -19,14 +19,14 @@ class ImageEditController extends ChangeNotifier {
 
     magicColor = await Cv2.pyrMeanShiftFiltering(
       pathFrom: CVPathFrom.GALLERY_CAMERA,
-      pathString: finalImages[_currentPage].path,
+      pathString: finalImages[currentPage].path,
       spatialWindowRadius: 20,
       colorWindowRadius: 20,
     );
 
     blackAndWhite = await Cv2.cvtColor(
       pathFrom: CVPathFrom.GALLERY_CAMERA,
-      pathString: finalImages[_currentPage].path,
+      pathString: finalImages[currentPage].path,
       outputType: Cv2.COLOR_BGR2GRAY,
     );
 

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class AddMoreProfile extends StatefulWidget {
-  const AddMoreProfile({Key? key}) : super(key: key);
+  const AddMoreProfile({super.key});
 
   @override
   State<AddMoreProfile> createState() => _AddMoreProfileState();

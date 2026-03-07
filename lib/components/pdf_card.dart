@@ -14,15 +14,14 @@ class PdfCard extends StatelessWidget {
   final int fileId;
   final String remarks;
   const PdfCard(
-      {Key? key,
+      {super.key,
       required this.createdAt,
       required this.fileNAme,
       required this.thumbnilUrl,
       required this.fileType,
       required this.fileId,
       required this.remarks,
-      required this.imageURl})
-      : super(key: key);
+      required this.imageURl});
 
   @override
   Widget build(BuildContext context) {

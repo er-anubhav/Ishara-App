@@ -16,12 +16,11 @@ class CameraScreen extends StatefulWidget {
   final String? redirectTo;
   final int? selectedFolder;
   const CameraScreen(
-      {Key? key,
+      {super.key,
       required this.appBarTitle,
       this.redirectTo,
       this.selectedCategory,
-      this.selectedFolder})
-      : super(key: key);
+      this.selectedFolder});
 
   @override
   State<CameraScreen> createState() => _CameraScreenState();
@@ -77,7 +76,7 @@ class _CameraScreenState extends State<CameraScreen> {
     try {
       await cameraController.initialize();
     } on CameraException catch (e) {
-      print('Error initializing camera: $e');
+      debugPrint('Error initializing camera: $e');
     }
   }
 
@@ -159,9 +158,9 @@ class _CameraScreenState extends State<CameraScreen> {
                                 selectedFolder: widget.selectedFolder,
                               ));
                             },
-                            child: Stack(
+                            child: const Stack(
                               alignment: Alignment.center,
-                              children: const [
+                              children: [
                                 Icon(
                                   Icons.circle,
                                   color: Colors.white,

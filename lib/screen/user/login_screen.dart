@@ -6,7 +6,7 @@ import 'package:get/get.dart';
 import 'login_screen_1.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -36,7 +36,7 @@ class _LoginScreenState extends State<LoginScreen> {
           boxShadow: [
             isActive
                 ? BoxShadow(
-                    color: const Color(0XFF2FB7B2).withOpacity(0.72),
+                    color: const Color(0XFF2FB7B2).withValues(alpha: 0.72),
                     blurRadius: 4.0,
                     spreadRadius: 1.0,
                     offset: const Offset(

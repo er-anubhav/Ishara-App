@@ -9,7 +9,7 @@ import '../../components/default_button.dart';
 import '../../contstants/app_colors.dart';
 
 class LoginScreenNext extends StatefulWidget {
-  const LoginScreenNext({Key? key}) : super(key: key);
+  const LoginScreenNext({super.key});
 
   @override
   State<LoginScreenNext> createState() => _LoginScreenNextState();
@@ -141,19 +141,29 @@ class _LoginScreenNextState extends State<LoginScreenNext> {
                   if (formKey.currentState!.validate()) {
                     var data = {"phone": phoneNUmberCOntroller.text};
 
-                    final response = await showDialog(
-                      context: context,
-                      builder: (context) => FutureProgressDialog(
-                          baseClient.post('login', data, false),
-                          message: const Text('Loading...')),
-                    );
-
-                    if (response['success']) {
-                      Get.off(
-                        VerifyOtpScreen(
-                          mobileNUmber: phoneNUmberCOntroller.text,
-                        ),
+                    try {
+                      final response = await showDialog(
+                        context: context,
+                        builder: (context) => FutureProgressDialog(
+                            baseClient.post('login', data, false),
+                            message: const Text('Loading...')),
                       );
+
+                      if (response is Map && response['success'] == true) {
+                        Get.off(
+                          VerifyOtpScreen(
+                            mobileNUmber: phoneNUmberCOntroller.text,
+                          ),
+                        );
+                      } else if (response is Map) {
+                        Get.snackbar(
+                          "Failed",
+                          response['message']?.toString() ??
+                              "Unable to login right now",
+                        );
+                      }
+                    } catch (_) {
+                      // Errors are already surfaced by BaseClient snackbars.
                     }
                   }
                 },

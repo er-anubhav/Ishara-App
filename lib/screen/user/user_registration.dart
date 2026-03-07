@@ -11,7 +11,7 @@ import '../../components/default_button.dart';
 import '../../contstants/app_colors.dart';
 
 class UserRegistrationScreen extends StatefulWidget {
-  const UserRegistrationScreen({Key? key}) : super(key: key);
+  const UserRegistrationScreen({super.key});
 
   @override
   State<UserRegistrationScreen> createState() => _UserRegistrationScreenState();
@@ -24,7 +24,7 @@ class _UserRegistrationScreenState extends State<UserRegistrationScreen> {
   TextEditingController nameController = TextEditingController();
   TextEditingController emailController = TextEditingController();
 
-  onCOntinuePress() async {
+  Future<void> onCOntinuePress() async {
     if (_formKey.currentState!.validate()) {
       if (isChecked) {
         var data = {
@@ -45,7 +45,7 @@ class _UserRegistrationScreenState extends State<UserRegistrationScreen> {
             'Success',
             response['message'],
           );
-          Get.to(const SelectUserScreen());
+          Get.off(const SelectUserScreen());
         } else {
           Get.snackbar(
             'Failed',
@@ -112,6 +112,7 @@ class _UserRegistrationScreenState extends State<UserRegistrationScreen> {
                           if (v!.isEmpty) {
                             return "Name is required";
                           }
+                          return null;
                         },
                         inputFormatters: [
                           FilteringTextInputFormatter.allow(
@@ -140,6 +141,7 @@ class _UserRegistrationScreenState extends State<UserRegistrationScreen> {
                         if (v!.isEmpty) {
                           return "Email is required";
                         }
+                        return null;
                       },
                       // inputFormatters: [
                       //   FilteringTextInputFormatter.allow(RegExp(

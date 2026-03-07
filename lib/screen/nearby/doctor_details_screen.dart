@@ -8,8 +8,7 @@ class DoctorDeatailsScreen extends StatefulWidget {
   final int doctorID;
   final String doctorNAme;
   const DoctorDeatailsScreen(
-      {Key? key, required this.doctorID, required this.doctorNAme})
-      : super(key: key);
+      {super.key, required this.doctorID, required this.doctorNAme});
 
   @override
   State<DoctorDeatailsScreen> createState() => _DoctorDeatailsScreenState();
@@ -20,12 +19,12 @@ class _DoctorDeatailsScreenState extends State<DoctorDeatailsScreen> {
   bool isLoading = true;
   dynamic doctorDetails;
 
-  getDoctorDetails(context) async {
+  Future<void> getDoctorDetails(BuildContext context) async {
     final response = await baseClient.get(
         'medico-search-details?id=${widget.doctorID}', true);
     if (response['success']) {
       doctorDetails = response['data'][0];
-      print(doctorDetails);
+      debugPrint(doctorDetails.toString());
       isLoading = false;
       setState(() {});
     }
@@ -375,7 +374,7 @@ class _DoctorDeatailsScreenState extends State<DoctorDeatailsScreen> {
                                                     },
                                                     style: OutlinedButton
                                                         .styleFrom(
-                                                            primary: AppColors
+                                                            foregroundColor: AppColors
                                                                 .primaryColor),
                                                     child: Text(
                                                       "Get directions",

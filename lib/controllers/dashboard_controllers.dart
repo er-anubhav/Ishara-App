@@ -18,7 +18,7 @@ class DashBoardController extends ChangeNotifier {
   GetRecentUploads getRecentUploads = GetRecentUploads();
   GetFeaturedDoctors getFeaturedDoctors = GetFeaturedDoctors();
 
-  Future getBannersData(context) async {
+  Future<void> getBannersData(BuildContext context) async {
     final apiResponse = await baseClient.get('banners', false);
     var response = jsonEncode(apiResponse);
     getBanners = getBannersFromJson(response);
@@ -28,7 +28,7 @@ class DashBoardController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future getRecentUpload(context) async {
+  Future<void> getRecentUpload(BuildContext context) async {
     final apiResponse = await baseClient.get('recent-uploads', true);
 
     var response = jsonEncode(apiResponse);
@@ -40,7 +40,7 @@ class DashBoardController extends ChangeNotifier {
     notifyListeners();
   }
 
-  getFeaturedDoctorsData(context) async {
+  Future<void> getFeaturedDoctorsData(BuildContext context) async {
     final apiResponse = await baseClient.get('medico-featured', true);
     var response = jsonEncode(apiResponse);
     getFeaturedDoctors = getFeaturedDoctorsFromJson(response);

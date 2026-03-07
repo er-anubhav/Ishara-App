@@ -24,8 +24,7 @@ class ShareDocumentDialog extends StatefulWidget {
   final int itemID;
   final String itemType;
   const ShareDocumentDialog(
-      {Key? key, required this.itemID, required this.itemType})
-      : super(key: key);
+      {super.key, required this.itemID, required this.itemType});
 
   @override
   State<ShareDocumentDialog> createState() => _ShareDocumentDialogState();
@@ -47,7 +46,7 @@ class _ShareDocumentDialogState extends State<ShareDocumentDialog> {
   String getRandomString(int length) => String.fromCharCodes(Iterable.generate(
       length, (_) => chars.codeUnitAt(rnd.nextInt(chars.length))));
 
-  getFamilyMember() async {
+  Future<void> getFamilyMember() async {
     final response = await baseClient.get('profiles', true);
     if (response['success']) {
       profiles = response['data']['profiles'];
@@ -57,20 +56,21 @@ class _ShareDocumentDialogState extends State<ShareDocumentDialog> {
 
   ReceivePort receivePort = ReceivePort();
 
-  static downloadingCallback(id, status, progress) {
+  @pragma('vm:entry-point')
+  static void downloadingCallback(String id, int status, int progress) {
     SendPort? sendPort = IsolateNameServer.lookupPortByName("downloading");
 
     sendPort!.send([id, status, progress]);
   }
 
-  downloaproductdpdf() async {
+  Future<void> downloaproductdpdf() async {
     final status = await Permission.storage.request();
 
     if (status.isGranted) {
       externalDir = await getExternalStorageDirectory();
       fileName = "docuhealth_${getRandomString(10)}";
 
-      final id = await FlutterDownloader.enqueue(
+      await FlutterDownloader.enqueue(
         url: "${baseUrl}file/${widget.itemID}/download",
         savedDir: externalDir!.path,
         fileName: fileName,
@@ -78,7 +78,7 @@ class _ShareDocumentDialogState extends State<ShareDocumentDialog> {
         openFileFromNotification: true,
       );
     } else {
-      print("Permission deined");
+      debugPrint("Permission denied");
     }
   }
 
@@ -105,15 +105,14 @@ class _ShareDocumentDialogState extends State<ShareDocumentDialog> {
       final resp = await shareWithFamilyMember(response['data']['id'], 'share');
       return resp;
     } else {
-      Share.share(
-          'check out this amazing app https://play.google.com/store/apps/details?id=app.docuhealth.com');
+      SharePlus.instance.share(ShareParams(
+          text: 'check out this amazing app https://play.google.com/store/apps/details?id=app.docuhealth.com'));
       return true;
     }
   }
 
   @override
   void initState() {
-    // TODO: implement initState
     getFamilyMember();
     IsolateNameServer.registerPortWithName(receivePort.sendPort, "downloading");
 
@@ -125,11 +124,11 @@ class _ShareDocumentDialogState extends State<ShareDocumentDialog> {
       if (progress == 100) {
         setState(() {
           isLoading = false;
-          Share.shareFiles(['${externalDir!.path}/$fileName']);
+          SharePlus.instance.share(ShareParams(files: [XFile('${externalDir!.path}/$fileName')]));
         });
       }
 
-      print(progress);
+      debugPrint('Download progress: $progress');
     });
 
     FlutterDownloader.registerCallback(downloadingCallback);
@@ -181,7 +180,7 @@ class _ShareDocumentDialogState extends State<ShareDocumentDialog> {
                                         message: const Text(
                                             'Sharing please wait...')),
                                   );
-                                  print(resp);
+                                  debugPrint('Share response: $resp');
                                   if (resp) {
                                     Get.back();
                                     Get.snackbar(
@@ -226,6 +225,7 @@ class _ShareDocumentDialogState extends State<ShareDocumentDialog> {
                             if (v!.isEmpty) {
                               return "Phone number is required";
                             }
+                            return null;
                           },
                         ),
                         DefaultButton(
@@ -238,7 +238,7 @@ class _ShareDocumentDialogState extends State<ShareDocumentDialog> {
                                   message:
                                       const Text('Sharing please wait...')),
                             );
-                            print(resp);
+                            debugPrint('Share response: $resp');
                             if (resp) {
                               Get.back();
                               Get.snackbar(

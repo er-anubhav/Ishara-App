@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:docuhealth/screen/home_screen.dart';
+import 'package:docuhealth/screen/user/select_user_scrren.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
@@ -7,7 +8,7 @@ import '../helper/get_storage_helper.dart';
 import 'user/login_screen.dart';
 
 class Splash extends StatefulWidget {
-  const Splash({Key? key}) : super(key: key);
+  const Splash({super.key});
 
   @override
   State<Splash> createState() => _SplashState();
@@ -19,11 +20,20 @@ class _SplashState extends State<Splash> {
     Timer(
       const Duration(seconds: 2),
       () {
-        Get.off(box.read("is_logged_in").toString() == "true"
-            ? const HomePage(
-                currentIndex: 0,
-              )
-            : const LoginScreen());
+        final isLoggedIn = box.read('is_logged_in') == true ||
+            box.read('is_logged_in').toString() == 'true';
+        final hasProfileContext = box.read('has_profile_context') == true ||
+            box.read('has_profile_context').toString() == 'true';
+
+        if (isLoggedIn) {
+          Get.off(hasProfileContext
+              ? const HomePage(
+                  currentIndex: 0,
+                )
+              : const SelectUserScreen());
+        } else {
+          Get.off(const LoginScreen());
+        }
       },
     );
 

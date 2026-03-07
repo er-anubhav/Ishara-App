@@ -64,4 +64,6 @@ var categoryFilter = [
   'Pulse',
   'Weight',
   'Sugar',
+  'Temperature',
+  'SpO2',
 ];

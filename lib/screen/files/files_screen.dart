@@ -7,7 +7,6 @@ import 'package:pull_to_refresh/pull_to_refresh.dart';
 import '../../components/image_preview_screen.dart';
 import '../../components/pdf_preview.dart';
 import '../../contstants/app_colors.dart';
-import '../../main.dart';
 import '../../services/base_client.dart';
 import '../../theme.dart';
 import '../document_category/my_documents.dart';
@@ -23,15 +22,14 @@ class FilesScreen extends StatefulWidget {
   final String redirectTo;
   final int folderId;
   const FilesScreen(
-      {Key? key,
+      {super.key,
       required this.appBarTitle,
       required this.categoryName,
       required this.documentType,
       required this.fileId,
       required this.operationType,
       required this.folderId,
-      required this.redirectTo})
-      : super(key: key);
+      required this.redirectTo});
 
   @override
   State<FilesScreen> createState() => _FilesScreenState();
@@ -47,6 +45,7 @@ class _FilesScreenState extends State<FilesScreen>
   String sortBy = '';
   AnimationController? _animationController;
   Animation<Color?>? _buttonColor;
+  // ignore: unused_field
   Animation<double>? _animateIcon;
   Animation<double>? _translateButton;
   final Curve _curve = Curves.easeOut;
@@ -59,13 +58,13 @@ class _FilesScreenState extends State<FilesScreen>
   final RefreshController refreshController =
       RefreshController(initialRefresh: true);
 
-  getData(context, currentPage) async {
+  Future<dynamic> getData(BuildContext context, int currentPage) async {
     isLoading = true;
     setState(() {});
     final resp = await baseClient.get(
         'file/get?folder=${widget.folderId}&page=$currentPage&search=$searchKey',
         true);
-    print(resp["data"]["data_records"]);
+    debugPrint('${resp["data"]["data_records"]}');
     if (resp['success']) {
       if (resp["data"]["data_records"] != null) {
         double pageCount = resp["data"]["data_records"]['total_records'] /
@@ -79,7 +78,7 @@ class _FilesScreenState extends State<FilesScreen>
     setState(() {});
   }
 
-  _onRefresh() async {
+  Future<void> _onRefresh() async {
     var data = await getData(context, currentPage);
     files = data;
     if (mounted) setState(() {});
@@ -105,7 +104,7 @@ class _FilesScreenState extends State<FilesScreen>
   Future<bool> ondeleteFilePress(int id, buttonType) async {
     final resp = await baseClient.get("$buttonType/delete/$id", true);
     if (resp['success']) {
-      getData(context, currentPage);
+      if (mounted) getData(context, currentPage);
       Get.snackbar('Success', '${resp['message']}',
           backgroundColor: Colors.green);
       return true;
@@ -125,7 +124,7 @@ class _FilesScreenState extends State<FilesScreen>
           };
     final resp = await baseClient.post("$buttonType/rename", data, true);
     if (resp['success']) {
-      getData(context, currentPage);
+      if (mounted) getData(context, currentPage);
       return true;
     } else {
       Get.snackbar('Failed', resp['message'],
@@ -134,7 +133,7 @@ class _FilesScreenState extends State<FilesScreen>
     }
   }
 
-  onPasteButtonPress() async {
+  Future<bool> onPasteButtonPress() async {
     var data = widget.documentType == "folder"
         ? {"folder_id": "${widget.fileId}", "distination": "${widget.folderId}"}
         : {"file_id": "${widget.fileId}", "distination": "${widget.folderId}"};
@@ -151,7 +150,7 @@ class _FilesScreenState extends State<FilesScreen>
     }
   }
 
-  onBookMarkButtonPress(int id, String operation, String documentType) async {
+  Future<bool> onBookMarkButtonPress(int id, String operation, String documentType) async {
     final response = await baseClient.get(
         'bookmark/$operation?id=$id&type=$documentType', true);
     if (response['success']) {
@@ -199,7 +198,7 @@ class _FilesScreenState extends State<FilesScreen>
     super.initState();
   }
 
-  animate() {
+  void animate() {
     if (!isOpened) {
       _animationController!.forward();
     } else {
@@ -219,6 +218,7 @@ class _FilesScreenState extends State<FilesScreen>
         ),
         backgroundColor: AppColors.primaryColor,
         bottom: PreferredSize(
+          preferredSize: Size(double.infinity, 50.h),
           child: Padding(
             padding: EdgeInsets.all(10.r),
             child: Row(
@@ -283,7 +283,6 @@ class _FilesScreenState extends State<FilesScreen>
               ],
             ),
           ),
-          preferredSize: Size(double.infinity, 50.h),
         ),
         title: Text(
           widget.appBarTitle,
@@ -364,7 +363,7 @@ class _FilesScreenState extends State<FilesScreen>
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: files.length,
                 itemBuilder: (_, i) {
-                  print(files);
+                  debugPrint('$files');
                   return Card(
                     color: AppColors.whitebgColor,
                     shape: RoundedRectangleBorder(
@@ -458,7 +457,7 @@ class _FilesScreenState extends State<FilesScreen>
                               onPressed: () async {
                                 if (files[i]['tag'] == "folder") {
                                   if (files[i]['bookmark'] == "No") {
-                                    final resp = await showDialog(
+                                    await showDialog(
                                       context: context,
                                       builder: (context) =>
                                           FutureProgressDialog(
@@ -470,7 +469,7 @@ class _FilesScreenState extends State<FilesScreen>
                                       ),
                                     ).whenComplete(() => _onRefresh());
                                   } else {
-                                    final resp = await showDialog(
+                                    await showDialog(
                                       context: context,
                                       builder: (context) =>
                                           FutureProgressDialog(
@@ -487,7 +486,7 @@ class _FilesScreenState extends State<FilesScreen>
                                   }
                                 } else {
                                   if (files[i]['bookmark'] == "No") {
-                                    final resp = await showDialog(
+                                    await showDialog(
                                       context: context,
                                       builder: (context) =>
                                           FutureProgressDialog(
@@ -499,7 +498,7 @@ class _FilesScreenState extends State<FilesScreen>
                                       ),
                                     ).whenComplete(() => _onRefresh());
                                   } else {
-                                    final resp = await showDialog(
+                                    await showDialog(
                                       context: context,
                                       builder: (context) =>
                                           FutureProgressDialog(
@@ -509,7 +508,7 @@ class _FilesScreenState extends State<FilesScreen>
                                           'file',
                                         ),
                                         message: const Text(
-                                          'Please wait...',
+                                          'Please wait...'
                                         ),
                                       ),
                                     ).whenComplete(() => _onRefresh());
@@ -557,7 +556,7 @@ class _FilesScreenState extends State<FilesScreen>
                                             ).whenComplete(() => _onRefresh());
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            primary: AppColors.primaryColor,
+                                            backgroundColor: AppColors.primaryColor,
                                           ),
                                           child: const Text('Yes'),
                                         ),
@@ -570,7 +569,7 @@ class _FilesScreenState extends State<FilesScreen>
                                             Get.back();
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            primary: Colors.grey.shade400,
+                                            backgroundColor: Colors.grey.shade400,
                                           ),
                                           child: const Text('Cancel'),
                                         ),
@@ -588,7 +587,7 @@ class _FilesScreenState extends State<FilesScreen>
                                           decoration: AppTheme
                                               .defaultDescriptionInputFieldDecoration(
                                             "${files[i]['name']}",
-                                            const Icon(Icons.folder),
+                                            Icons.folder,
                                           ),
                                         ),
                                       ),
@@ -617,7 +616,7 @@ class _FilesScreenState extends State<FilesScreen>
                                             }
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            primary: AppColors.primaryColor,
+                                            backgroundColor: AppColors.primaryColor,
                                           ),
                                           child: const Text('Continue'),
                                         ),
@@ -630,7 +629,7 @@ class _FilesScreenState extends State<FilesScreen>
                                             Get.back();
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            primary: Colors.grey.shade400,
+                                            backgroundColor: Colors.grey.shade400,
                                           ),
                                           child: const Text('Cancel'),
                                         ),
@@ -697,7 +696,7 @@ class _FilesScreenState extends State<FilesScreen>
                                             ).whenComplete(() => _onRefresh());
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            primary: AppColors.primaryColor,
+                                            backgroundColor: AppColors.primaryColor,
                                           ),
                                           child: const Text('Yes'),
                                         ),
@@ -710,7 +709,7 @@ class _FilesScreenState extends State<FilesScreen>
                                             Get.back();
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            primary: Colors.grey.shade400,
+                                            backgroundColor: Colors.grey.shade400,
                                           ),
                                           child: const Text('Cancel'),
                                         ),
@@ -732,7 +731,7 @@ class _FilesScreenState extends State<FilesScreen>
                                               decoration: AppTheme
                                                   .defaultDescriptionInputFieldDecoration(
                                                 "${files[i]['name'] ?? 'File name'}",
-                                                const Icon(Icons.folder),
+                                                Icons.folder,
                                               ),
                                             ),
                                             SizedBox(
@@ -743,7 +742,7 @@ class _FilesScreenState extends State<FilesScreen>
                                               decoration: AppTheme
                                                   .defaultDescriptionInputFieldDecoration(
                                                 "${files[i]['remarks'] ?? 'Remarks'}",
-                                                const Icon(Icons.folder),
+                                                Icons.folder,
                                               ),
                                             ),
                                           ],
@@ -775,7 +774,7 @@ class _FilesScreenState extends State<FilesScreen>
                                             }
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            primary: AppColors.primaryColor,
+                                            backgroundColor: AppColors.primaryColor,
                                           ),
                                           child: const Text('Continue'),
                                         ),
@@ -788,7 +787,7 @@ class _FilesScreenState extends State<FilesScreen>
                                             Get.back();
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            primary: Colors.grey.shade400,
+                                            backgroundColor: Colors.grey.shade400,
                                           ),
                                           child: const Text('Cancel'),
                                         ),

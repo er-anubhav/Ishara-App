@@ -15,7 +15,7 @@ class DocumentController extends ChangeNotifier {
   GetApiResponse getApiResponse = GetApiResponse();
   int totalpage = 0;
 
-  Future getData(context, currentPage, sortBy, searchKey, categoryName,
+  Future<void> getData(BuildContext context, int currentPage, String sortBy, String searchKey, String categoryName,
       bool isRefresh) async {
     if (isRefresh) {
       listData = [];
@@ -43,8 +43,8 @@ class DocumentController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future getMyDocuments(
-      context, int currentPage, String searchKey, bool isRefresh) async {
+  Future<void> getMyDocuments(
+      BuildContext context, int currentPage, String searchKey, bool isRefresh) async {
     if (isRefresh) {
       myDocuments = [];
       isLoading = true;
@@ -70,7 +70,7 @@ class DocumentController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future getFiles(context, String category, int folderId, int currentPage,
+  Future<void> getFiles(BuildContext context, String category, int folderId, int currentPage,
       String searchKey, String sortBy, bool isRefresh) async {
     if (isRefresh) {
       listFiles = [];
@@ -98,7 +98,7 @@ class DocumentController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> ondeleteFile(context, id, buttonType) async {
+  Future<bool> ondeleteFile(BuildContext context, int id, String buttonType) async {
     final response = await baseClient.get("$buttonType/delete/$id", true);
     final getApiResponse = getApiResponseFromJson(response);
 
@@ -131,7 +131,7 @@ class DocumentController extends ChangeNotifier {
   }
 
   Future<bool> onPaste(
-      context, documentType, fileId, categoryName, isCopy) async {
+      BuildContext context, String documentType, int fileId, String categoryName, bool isCopy) async {
     var data = documentType == "folder"
         ? {"folder_id": "$fileId", "distination": categoryName}
         : {"file_id": "$fileId", "distination": categoryName};

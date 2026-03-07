@@ -9,14 +9,13 @@ import '../../theme.dart';
 class CreateFolderDialog extends StatefulWidget {
   final String? categoryName;
   final bool? isShowDropdown;
-  const CreateFolderDialog({Key? key, this.categoryName, this.isShowDropdown})
-      : super(key: key);
+  const CreateFolderDialog({super.key, this.categoryName, this.isShowDropdown});
 
   @override
-  _CreateFolderDialogState createState() => _CreateFolderDialogState();
+  CreateFolderDialogState createState() => CreateFolderDialogState();
 }
 
-class _CreateFolderDialogState extends State<CreateFolderDialog> {
+class CreateFolderDialogState extends State<CreateFolderDialog> {
   BaseClient baseClient = BaseClient();
   TextEditingController folderNameController = TextEditingController();
   String? dropdownvalue;
@@ -31,7 +30,7 @@ class _CreateFolderDialogState extends State<CreateFolderDialog> {
     {"title": "Genral Docs", "category_name": "GENRAL_DOCS"},
   ];
 
-  Future<bool> createNewFolderPress(context) async {
+  Future<bool> createNewFolderPress(BuildContext context) async {
     var data = {"name": folderNameController.text, "belongs_to": dropdownvalue};
     final response = await showDialog(
       context: context,
@@ -51,12 +50,11 @@ class _CreateFolderDialogState extends State<CreateFolderDialog> {
 
   @override
   void initState() {
-    // TODO: implement initState
     getName();
     super.initState();
   }
 
-  getName() {
+  void getName() {
     for (var i = 0; i < items.length; i++) {
       if (items[i]['category_name'] == widget.categoryName) {
         dropdownvalue = widget.categoryName;
@@ -114,6 +112,7 @@ class _CreateFolderDialogState extends State<CreateFolderDialog> {
                           ? "Hospital name is required"
                           : "Folder name is required";
                 }
+                return null;
               },
             ),
             const SizedBox(
@@ -123,11 +122,12 @@ class _CreateFolderDialogState extends State<CreateFolderDialog> {
                 ? DropdownButtonFormField(
                     decoration: AppTheme.defaultInputFieldDecoration(
                         "Select category", Icons.category),
-                    value: dropdownvalue,
+                    initialValue: dropdownvalue,
                     validator: (v) {
                       if (dropdownvalue == null) {
                         return "Category is required";
                       }
+                      return null;
                     },
                     icon: const Icon(Icons.keyboard_arrow_down),
                     items: items.map((items) {

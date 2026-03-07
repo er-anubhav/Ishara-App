@@ -11,7 +11,7 @@ import 'package:get/get.dart';
 import 'add_more_family_member.dart';
 
 class SelectUserScreen extends StatefulWidget {
-  const SelectUserScreen({Key? key}) : super(key: key);
+  const SelectUserScreen({super.key});
 
   @override
   State<SelectUserScreen> createState() => _SelectUserScreenState();
@@ -19,43 +19,67 @@ class SelectUserScreen extends StatefulWidget {
 
 class _SelectUserScreenState extends State<SelectUserScreen> {
   BaseClient baseClient = BaseClient();
-  List profiles = [];
-  getUserProfile(context) async {
-    final response = await baseClient.get('profiles', true);
-    print(response);
-    profiles = response['data']['profiles'];
-    setState(() {});
+  List<dynamic> profiles = [];
+
+  Future<void> getUserProfile() async {
+    try {
+      final response = await baseClient.get('profiles', true);
+      if (response is Map && response['success'] == true) {
+        final data = response['data'];
+        if (data is Map && data['profiles'] is List) {
+          profiles = data['profiles'];
+        } else {
+          profiles = [];
+        }
+      } else {
+        profiles = [];
+      }
+    } catch (_) {
+      profiles = [];
+    } finally {
+      if (mounted) {
+        setState(() {});
+      }
+    }
   }
 
-  onProfileTap(profileId) async {
+  Future<void> onProfileTap(dynamic profileId) async {
     var data = {"profile_id": "$profileId", "device_token": deviceToken};
-    final response = await showDialog(
-      context: context,
-      builder: (context) => FutureProgressDialog(
-          baseClient.post('profile-login', data, true),
-          message: const Text('Switching profile...')),
-    );
-
-    print(response);
-
-    if (response['success']) {
-      GetStorageHelper.setdata(
-        response['data']['id'],
-        response['data']['name'],
-        response['data']['phone'],
-        response['data']['email'],
-        '',
-        response['token'],
+    try {
+      final response = await showDialog(
+        context: context,
+        builder: (context) => FutureProgressDialog(
+            baseClient.post('profile-login', data, true),
+            message: const Text('Switching profile...')),
       );
-      Get.to(const HomePage(
-        currentIndex: 0,
-      ));
+
+      if (response is Map && response['success'] == true) {
+        GetStorageHelper.setdata(
+          (response['data']['id'] ?? '').toString(),
+          (response['data']['name'] ?? '').toString(),
+          (response['data']['phone'] ?? '').toString(),
+          (response['data']['email'] ?? '').toString(),
+          '',
+          (response['token'] ?? '').toString(),
+          hasProfileContext: true,
+        );
+        Get.offAll(const HomePage(
+          currentIndex: 0,
+        ));
+      } else if (response is Map) {
+        Get.snackbar(
+          "Failed",
+          response['message']?.toString() ?? "Unable to switch profile",
+        );
+      }
+    } catch (_) {
+      Get.snackbar("Failed", "Unable to switch profile");
     }
   }
 
   @override
   void initState() {
-    getUserProfile(context);
+    getUserProfile();
     super.initState();
   }
 
@@ -92,11 +116,11 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
         itemBuilder: (BuildContext context, int index) {
           return index == profiles.length
               ? InkWell(
-                  onTap: (() {
-                    Get.to(
+                  onTap: (() async {
+                    await Get.to(
                       const AddNewFamilyMember(),
-                    )!
-                        .whenComplete(() => getUserProfile(context));
+                    );
+                    if (mounted) getUserProfile();
                   }),
                   child: Column(
                     children: [
@@ -147,6 +171,14 @@ class _SelectUserScreenState extends State<SelectUserScreen> {
                           child: Image.network(
                             profiles[index]['icon'],
                             fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: Colors.grey.shade200,
+                              child: Icon(
+                                Icons.person,
+                                color: AppColors.primaryColor,
+                                size: 40.r,
+                              ),
+                            ),
                           ),
                         ),
                       ),

@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:docuhealth/controllers/image_edit_controller.dart';
 import 'package:docuhealth/contstants/app_colors.dart';
 import 'package:docuhealth/screen/scanner/camera_screen.dart';
@@ -11,8 +10,6 @@ import 'package:future_progress_dialog/future_progress_dialog.dart';
 import 'package:get/get.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:opencv_4/factory/pathfrom.dart';
-import 'package:opencv_4/opencv_4.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import '../../components/pdf_preview.dart';
@@ -25,12 +22,11 @@ class ImagePreviewEditScreen extends StatefulWidget {
   final String redirectTo;
   final int? selectedFolder;
   const ImagePreviewEditScreen(
-      {Key? key,
+      {super.key,
       required this.images,
       required this.categoryName,
       required this.redirectTo,
-      required this.selectedFolder})
-      : super(key: key);
+      required this.selectedFolder});
 
   @override
   State<ImagePreviewEditScreen> createState() => _ImagePreviewEditScreenState();
@@ -63,60 +59,36 @@ class _ImagePreviewEditScreenState extends State<ImagePreviewEditScreen> {
   Future<CroppedFile?> cropImage(File imageFile) async {
     CroppedFile? croppedFile = await ImageCropper().cropImage(
       sourcePath: imageFile.path,
-      aspectRatioPresets: [
-        CropAspectRatioPreset.square,
-        CropAspectRatioPreset.ratio3x2,
-        CropAspectRatioPreset.original,
-        CropAspectRatioPreset.ratio4x3,
-        CropAspectRatioPreset.ratio16x9
-      ],
       uiSettings: [
         AndroidUiSettings(
             toolbarTitle: 'Cropper',
             toolbarColor: Colors.deepOrange,
             toolbarWidgetColor: Colors.white,
             initAspectRatio: CropAspectRatioPreset.original,
-            lockAspectRatio: false),
+            lockAspectRatio: false,
+            aspectRatioPresets: [
+              CropAspectRatioPreset.square,
+              CropAspectRatioPreset.ratio3x2,
+              CropAspectRatioPreset.original,
+              CropAspectRatioPreset.ratio4x3,
+              CropAspectRatioPreset.ratio16x9
+            ]),
         IOSUiSettings(
           title: 'Cropper',
+          aspectRatioPresets: [
+            CropAspectRatioPreset.square,
+            CropAspectRatioPreset.ratio3x2,
+            CropAspectRatioPreset.original,
+            CropAspectRatioPreset.ratio4x3,
+            CropAspectRatioPreset.ratio16x9
+          ],
         ),
       ],
     );
     return croppedFile;
   }
 
-  Widget _indicator(bool isActive) {
-    return SizedBox(
-      height: 10,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        margin: const EdgeInsets.symmetric(horizontal: 4.0),
-        height: isActive ? 10 : 8.0,
-        width: isActive ? 12 : 8.0,
-        decoration: BoxDecoration(
-          boxShadow: [
-            isActive
-                ? BoxShadow(
-                    color: const Color(0XFF2FB7B2).withOpacity(0.72),
-                    blurRadius: 4.0,
-                    spreadRadius: 1.0,
-                    offset: const Offset(
-                      0.0,
-                      0.0,
-                    ),
-                  )
-                : const BoxShadow(
-                    color: Colors.transparent,
-                  )
-          ],
-          shape: BoxShape.circle,
-          color: isActive ? const Color(0XFF6BC4C9) : const Color(0XFFEAEAEA),
-        ),
-      ),
-    );
-  }
-
-  Widget bottomSheetFilterWidget(context, imageIndex) {
+  Widget bottomSheetFilterWidget(BuildContext context, int imageIndex) {
     return SizedBox(
       height: 180,
       child: Center(
@@ -131,7 +103,7 @@ class _ImagePreviewEditScreenState extends State<ImagePreviewEditScreen> {
                   File file = File('${tempDir.path}/image.jpeg');
                   File newFile =
                       await file.writeAsBytes(imageEditController.original!);
-                  print(newFile.path);
+                  debugPrint(newFile.path);
                   finalImages[_currentPage] = XFile(newFile.path);
                   setState(() {});
                   Get.back();
@@ -188,7 +160,7 @@ class _ImagePreviewEditScreenState extends State<ImagePreviewEditScreen> {
                   File file = File('${tempDir.path}/magicColor.jpeg');
                   File newFile =
                       await file.writeAsBytes(imageEditController.magicColor!);
-                  print(newFile.path);
+                  debugPrint(newFile.path);
                   finalImages[_currentPage] = XFile(newFile.path);
                   Get.back();
                 },
@@ -251,7 +223,7 @@ class _ImagePreviewEditScreenState extends State<ImagePreviewEditScreen> {
               }
               finalImages = [];
             },
-            style: ElevatedButton.styleFrom(primary: AppColors.primaryColor),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryColor),
             child: Text(finalImages.length > 1 ? "Create pdf" : "Save"),
           ),
         ],
@@ -318,12 +290,14 @@ class _ImagePreviewEditScreenState extends State<ImagePreviewEditScreen> {
               context: context,
               builder: (context) => FutureProgressDialog(
                   imageEditController.loadFilter(_currentPage)),
-            ).whenComplete(() => showModalBottomSheet<void>(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return bottomSheetFilterWidget(context, _currentPage);
-                  },
-                ));
+            );
+            if (!context.mounted) return;
+            showModalBottomSheet<void>(
+              context: context,
+              builder: (BuildContext context) {
+                return bottomSheetFilterWidget(context, _currentPage);
+              },
+            );
           } else if (index == 2) {
             finalImages.remove(finalImages[_currentPage]);
             setState(() {});

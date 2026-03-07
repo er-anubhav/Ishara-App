@@ -14,9 +14,9 @@ class LocalNotificationService {
   }
 
   static Future firebaseBGHandler(RemoteMessage message) async {
-    print("A Big  message just Shown : ${message.messageId}");
+    debugPrint("A Big  message just Shown : ${message.messageId}");
 
-    print(message.notification);
+    debugPrint(message.notification.toString());
     // var data = jsonDecode(message.notification?.body ?? '');
     // print(data);
     // showImageNotification(
@@ -33,20 +33,20 @@ class LocalNotificationService {
           badge: true,
           sound: true,
         )
-        .then((value) => print("setForegroundNotificationPresentationOptions"));
+        .then((value) => debugPrint("setForegroundNotificationPresentationOptions"));
     return FirebaseMessaging.instance.getInitialMessage().then((message) {
-      print("FirebaseMessaging.instance.getInitialMessage");
+      debugPrint("FirebaseMessaging.instance.getInitialMessage");
       if (message != null) {
         // var data = jsonDecode(message.notification?.body ?? '');
         // print(data);
-        print(message.notification);
+        debugPrint(message.notification.toString());
         showImageNotification(
             title: message.notification?.title,
             body: message.notification?.body,
             imageUrl: message.data['image_url'],
             sound: message.data["redirect_to"] == "reminders",
             actionButton: message.data["redirect_to"] == "reminders");
-        print("New Notification");
+        debugPrint("New Notification");
         // String? redirectTo = message.data["redirect_to"] ?? "reminders";
         // redirectToScreen(redirectTo: redirectTo, context: context);
       }
@@ -56,20 +56,23 @@ class LocalNotificationService {
   static Future onMessageOpenedApp({required BuildContext context}) async {
     return FirebaseMessaging.onMessageOpenedApp.listen(
       (message) {
-        print("FirebaseMessaging.onMessageOpenedApp.listen");
+        debugPrint("FirebaseMessaging.onMessageOpenedApp.listen");
         if (message.notification != null) {
           String? redirectTo = message.data["redirect_to"] ?? "notifications";
+          // ignore: use_build_context_synchronously
+          if (!context.mounted) return;
+          // ignore: use_build_context_synchronously
           redirectToScreen(redirectTo: redirectTo, context: context);
         }
       },
     );
   }
 
-  onMessage({required BuildContext context}) async {
+  Future<void> onMessage({required BuildContext context}) async {
     FirebaseMessaging.onMessage.listen(
       (message) async {
-        print("FirebaseMessaging.onMessage.listen");
-        print(message.notification);
+        debugPrint("FirebaseMessaging.onMessage.listen");
+        debugPrint(message.notification.toString());
         if (message.notification != null) {
           // showNotification(
           //   title: message.notification!.title,
@@ -89,22 +92,12 @@ class LocalNotificationService {
               actionButton:
                   message.data["redirect_to"] == "reminders" ? true : false);
 
-          print(message.notification?.body);
-          print(message.notification);
-          print(message.data['redirect_to']);
-          AwesomeNotifications().actionStream.listen((action) {
-            if (action.buttonKeyPressed == "ACCEPT") {
-              // apiCall(message);
-              // reminderController.notificationSendStatus(
-              //     id: message.data['target_id'], status: 'Accepted');
-              print("Open button is pressed");
-            } else if (action.buttonKeyPressed == "SNOOZE") {
-              // reminderController.notificationSendStatus(
-              //     id: message.data['target_id'], status: 'Ignored');
-
-              print("Delete button is pressed.");
-            }
-          });
+          debugPrint(message.notification?.body);
+          debugPrint(message.notification.toString());
+          debugPrint(message.data['redirect_to']);
+          // Note: Action button handling should be set up once during app initialization
+          // using AwesomeNotifications().setListeners() with onActionReceivedMethod callback
+          // rather than subscribing to streams for each notification
           // String? redirectTo = message.data["redirect_to"] ?? "reminders";
           // AwesomeNotifications()
           //     .actionStream
@@ -141,13 +134,13 @@ class LocalNotificationService {
           NotificationActionButton(
             label: 'TEST',
             enabled: true,
-            buttonType: ActionButtonType.Default,
+            actionType: ActionType.Default,
             key: 'test',
           ),
           NotificationActionButton(
             label: 'Cancel',
             enabled: true,
-            buttonType: ActionButtonType.Default,
+            actionType: ActionType.Default,
             key: 'test',
           ),
         ]);
@@ -183,13 +176,13 @@ class LocalNotificationService {
                 NotificationActionButton(
                   label: 'ACCEPT',
                   enabled: true,
-                  buttonType: ActionButtonType.Default,
+                  actionType: ActionType.Default,
                   key: 'ACCEPT',
                 ),
                 NotificationActionButton(
                   label: 'SNOOZE',
                   enabled: true,
-                  buttonType: ActionButtonType.Default,
+                  actionType: ActionType.Default,
                   key: 'SNOOZE',
                 ),
               ]
@@ -203,7 +196,7 @@ class LocalNotificationService {
           badge: true,
           sound: true,
         )
-        .then((value) => print("setForegroundNotificationPresentationOptions"));
+        .then((value) => debugPrint("setForegroundNotificationPresentationOptions"));
 
     FirebaseMessaging messaging = FirebaseMessaging.instance;
 
@@ -218,30 +211,30 @@ class LocalNotificationService {
     );
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      print('User granted permission');
+      debugPrint('User granted permission');
     } else if (settings.authorizationStatus ==
         AuthorizationStatus.provisional) {
-      print('User granted provisional permission');
+      debugPrint('User granted provisional permission');
     } else {
-      print('User declined or has not accepted permission');
+      debugPrint('User declined or has not accepted permission');
     }
   }
 
   static Future redirectToScreen(
       {required String? redirectTo, required BuildContext context}) async {
-    print("On Notification Click");
-    print(redirectTo);
+    debugPrint("On Notification Click");
+    debugPrint(redirectTo);
     if (redirectTo == "vouchers") {
-      print("Redirecting to $redirectTo");
+      debugPrint("Redirecting to $redirectTo");
       Navigator.pushNamed(context, "/vouchers");
     } else if (redirectTo.toString() == "transactions") {
-      print("Redirecting to $redirectTo");
+      debugPrint("Redirecting to $redirectTo");
       Navigator.pushNamed(context, "/transactions");
     } else if (redirectTo.toString() == "bookings") {
-      print("Redirecting to $redirectTo");
+      debugPrint("Redirecting to $redirectTo");
       Navigator.pushNamed(context, "/bookings");
     } else if (redirectTo == "notifications") {
-      print("Redirecting to $redirectTo");
+      debugPrint("Redirecting to $redirectTo");
       Navigator.pushNamed(context, "/notifications");
     }
   }

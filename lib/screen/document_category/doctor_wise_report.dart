@@ -5,7 +5,7 @@ import '../../contstants/app_colors.dart';
 
 class DoctorWiseDocuments extends StatefulWidget {
   final String title;
-  const DoctorWiseDocuments({Key? key, required this.title}) : super(key: key);
+  const DoctorWiseDocuments({super.key, required this.title});
 
   @override
   State<DoctorWiseDocuments> createState() => _DoctorWiseDocumentsState();

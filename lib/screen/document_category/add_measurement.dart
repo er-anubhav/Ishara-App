@@ -15,7 +15,7 @@ import '../../controllers/daily_measurement_controller.dart';
 
 class AddMeasurement extends StatefulWidget {
   final String category;
-  const AddMeasurement({Key? key, required this.category}) : super(key: key);
+  const AddMeasurement({super.key, required this.category});
 
   @override
   State<AddMeasurement> createState() => _AddMeasurementState();
@@ -35,9 +35,11 @@ class _AddMeasurementState extends State<AddMeasurement> {
 
   List<String> weightUnit = ["Kg", "Pound"];
   String selectedWeightUnit = "Kg";
+  List<String> temperatureUnit = ["°C", "°F"];
+  String selectedTemperatureUnit = "°C";
   final ImagePicker picker = ImagePicker();
 
-  _selectTime(BuildContext context) async {
+  Future<void> _selectTime(BuildContext context) async {
     TimeOfDay selectedTime = TimeOfDay.now();
     final TimeOfDay? timeOfDay = await showTimePicker(
       context: context,
@@ -45,13 +47,14 @@ class _AddMeasurementState extends State<AddMeasurement> {
       initialEntryMode: TimePickerEntryMode.dial,
     );
     if (timeOfDay != null) {
+      if (!mounted) return;
       setState(() {
         timeController.text = timeOfDay.format(context);
       });
     }
   }
 
-  _selectDate(BuildContext context) async {
+  Future<void> _selectDate(BuildContext context) async {
     DateTime selectedDate = DateTime.now();
     final DateTime? selected = await showDatePicker(
       context: context,
@@ -60,6 +63,7 @@ class _AddMeasurementState extends State<AddMeasurement> {
       lastDate: DateTime.now(),
     );
     if (selected != null && selected != selectedDate) {
+      if (!mounted) return;
       setState(() {
         selectedDate = selected;
         dateController.text = DateFormat('dd-MM-yyyy').format(selectedDate);
@@ -67,7 +71,7 @@ class _AddMeasurementState extends State<AddMeasurement> {
     }
   }
 
-  Future<bool> onSubmitMeasurementPress() async {
+  Future<Map<String, dynamic>> onSubmitMeasurementPress({bool isAutoFetched = false}) async {
     var datas = widget.category == "BP"
         ? {
             "upper_bound": upperBondController.text,
@@ -77,7 +81,11 @@ class _AddMeasurementState extends State<AddMeasurement> {
             ? {"pulse_rate": datasController.text}
             : widget.category == "Sugar"
                 ? {"sugar_lavel": datasController.text}
-                : {'weight': "${datasController.text} $selectedWeightUnit"};
+                : widget.category == "Temperature"
+                    ? {"temperature": "${datasController.text} $selectedTemperatureUnit"}
+                    : widget.category == "SpO2"
+                        ? {"spo2": "${datasController.text}%"}
+                        : {'weight': "${datasController.text} $selectedWeightUnit"};
 
     String encodedData = json.encode(datas);
     var data = {
@@ -85,23 +93,25 @@ class _AddMeasurementState extends State<AddMeasurement> {
       'time': timeController.text,
       'category': widget.category,
       'datas': encodedData,
-      'comment': commentControllerController.text
+      'comment': commentControllerController.text,
+      'is_auto_fetched': isAutoFetched,
     };
     final response = attachment == null
         ? await baseClient.post('measurements', data, true)
         : await baseClient.dataWithAttachment(
             'measurements', data, attachment!.path, true);
 
-    print(response);
+    debugPrint('AddMeasurement response: $response');
 
     if (response['success']) {
+      if (!mounted) return {'success': false, 'message': 'Widget not mounted'};
       Provider.of<DailyMeasurementController>(context, listen: false)
           .getMeasurementsData(DateTime.now(), widget.category);
       Provider.of<DailyMeasurementController>(context, listen: false)
           .getAnalyticsData("Daily", widget.category);
-      return true;
+      return {'success': true, 'message': response['message'] ?? 'Saved'};
     } else {
-      return false;
+      return {'success': false, 'message': response['message'] ?? 'Failed to save measurement'};
     }
   }
 
@@ -199,15 +209,15 @@ class _AddMeasurementState extends State<AddMeasurement> {
                     )
                   : const SizedBox(),
               widget.category != "BP"
-                  ? widget.category == "Weight"
+                  ? (widget.category == "Weight" || widget.category == "Temperature")
                       ? Row(
                           children: [
                             Expanded(
                               flex: 2,
                               child: TextField(
                                 controller: datasController,
-                                maxLength: 3,
-                                keyboardType: TextInputType.number,
+                                maxLength: widget.category == "Temperature" ? 5 : 3,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                 decoration: InputDecoration(
                                   counterText: "",
                                   hintText: 'Enter ${widget.category}',
@@ -230,9 +240,14 @@ class _AddMeasurementState extends State<AddMeasurement> {
                                 child: DropdownButtonHideUnderline(
                                   child: DropdownButton(
                                     isExpanded: true,
-                                    value: selectedWeightUnit,
+                                    value: widget.category == "Temperature" 
+                                        ? selectedTemperatureUnit 
+                                        : selectedWeightUnit,
                                     icon: const Icon(Icons.keyboard_arrow_down),
-                                    items: weightUnit.map((String items) {
+                                    items: (widget.category == "Temperature" 
+                                            ? temperatureUnit 
+                                            : weightUnit)
+                                        .map((String items) {
                                       return DropdownMenuItem(
                                         value: items,
                                         child: Text(items),
@@ -240,7 +255,11 @@ class _AddMeasurementState extends State<AddMeasurement> {
                                     }).toList(),
                                     onChanged: (String? newValue) async {
                                       setState(() {
-                                        selectedWeightUnit = newValue!;
+                                        if (widget.category == "Temperature") {
+                                          selectedTemperatureUnit = newValue!;
+                                        } else {
+                                          selectedWeightUnit = newValue!;
+                                        }
                                       });
                                     },
                                   ),
@@ -279,9 +298,10 @@ class _AddMeasurementState extends State<AddMeasurement> {
                 height: 10.h,
               ),
               DottedBorder(
-                borderType: BorderType.RRect,
-                radius: const Radius.circular(12),
-                padding: const EdgeInsets.all(6),
+                options: const RoundedRectDottedBorderOptions(
+                  radius: Radius.circular(12),
+                  padding: EdgeInsets.all(6),
+                ),
                 child: ClipRRect(
                   borderRadius: const BorderRadius.all(Radius.circular(12)),
                   child: InkWell(
@@ -340,9 +360,9 @@ class _AddMeasurementState extends State<AddMeasurement> {
                               File(attachment!.path),
                               fit: BoxFit.cover,
                             )
-                          : Column(
+                          : const Column(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
+                              children: [
                                 Icon(Icons.upload),
                                 Text('Upload Document')
                               ],
@@ -360,8 +380,24 @@ class _AddMeasurementState extends State<AddMeasurement> {
                         onSubmitMeasurementPress(),
                         message: const Text('Please wait...')),
                   );
-                  if (resp) {
+                  if (resp['success'] == true) {
                     Get.back();
+                    Get.snackbar(
+                      'Success',
+                      resp['message'] ?? 'Measurement saved',
+                      backgroundColor: Colors.green,
+                      colorText: Colors.white,
+                      snackPosition: SnackPosition.BOTTOM,
+                    );
+                  } else {
+                    Get.snackbar(
+                      'Error',
+                      resp['message'] ?? 'Failed to save measurement',
+                      backgroundColor: Colors.red,
+                      colorText: Colors.white,
+                      snackPosition: SnackPosition.BOTTOM,
+                      duration: const Duration(seconds: 4),
+                    );
                   }
                 },
               ),

@@ -15,10 +15,10 @@ import 'package:weekday_selector/weekday_selector.dart';
 import '../../common.dart';
 
 class NewAddedReminderScreen extends StatefulWidget {
-  const NewAddedReminderScreen({Key? key}) : super(key: key);
+  const NewAddedReminderScreen({super.key});
 
   @override
-  _NewAddedReminderScreenState createState() => _NewAddedReminderScreenState();
+  State<NewAddedReminderScreen> createState() => _NewAddedReminderScreenState();
 }
 
 class _NewAddedReminderScreenState extends State<NewAddedReminderScreen> {
@@ -63,7 +63,7 @@ class _NewAddedReminderScreenState extends State<NewAddedReminderScreen> {
   TextEditingController alarmController = TextEditingController();
   FocusNode alarmFocusNode = FocusNode();
 
-  getNameSuggestions() async {
+  Future<void> getNameSuggestions() async {
     final response = await baseClient.get('reminders/suggetions', true);
     if (response['success']) {
       nameSuggestions = [];
@@ -99,7 +99,7 @@ class _NewAddedReminderScreenState extends State<NewAddedReminderScreen> {
     }
   }
 
-  formatDescide() {
+  void formatDescide() {
     if (selectedWeekDaysNameList.isEmpty && fromDate == "") {
       eventType = "Once";
       eventat.add(convertIntoWeekFormat(DateTime.now()));
@@ -114,7 +114,7 @@ class _NewAddedReminderScreenState extends State<NewAddedReminderScreen> {
       eventat = selectedWeekDaysNameList;
     } else {
       eventType = "Date Range";
-      eventat = ["$fromDate", "$toDate"];
+      eventat = [fromDate, toDate];
     }
   }
 
@@ -186,7 +186,7 @@ class _NewAddedReminderScreenState extends State<NewAddedReminderScreen> {
                                   fromDate == ''
                                       ? convertIntoWeekFormat(DateTime.now())
                                       : fromDate +
-                                          (toDate == '' ? '' : ' - ' + toDate),
+                                          (toDate == '' ? '' : ' - $toDate'),
                                   style: TextStyle(
                                       color: Colors.black, fontSize: 14.sp),
                                 )
@@ -202,7 +202,7 @@ class _NewAddedReminderScreenState extends State<NewAddedReminderScreen> {
                                           child: Wrap(
                                             children: selectedWeekDaysNameList
                                                 .map((e) => Text(
-                                                      e + ', ',
+                                                      '$e, ',
                                                       style: TextStyle(
                                                           color: Colors.black,
                                                           fontSize: 14.sp),
@@ -217,7 +217,7 @@ class _NewAddedReminderScreenState extends State<NewAddedReminderScreen> {
                                           : fromDate +
                                               (toDate == ''
                                                   ? ''
-                                                  : ' - ' + toDate),
+                                                  : ' - $toDate'),
                                       style: TextStyle(
                                           color: Colors.black, fontSize: 14.sp),
                                     )),
@@ -314,7 +314,7 @@ class _NewAddedReminderScreenState extends State<NewAddedReminderScreen> {
                                           allDays = value;
                                           setState(() {});
                                         },
-                                        activeColor: AppColors.primaryColor,
+                                        activeTrackColor: AppColors.primaryColor,
                                         value: allDays,
                                         // value: reminderController.allDaysSwitch,
                                       ),
@@ -363,7 +363,7 @@ class _NewAddedReminderScreenState extends State<NewAddedReminderScreen> {
                                 builder: (BuildContext context) {
                                   return StatefulBuilder(
                                     builder: (BuildContext context,
-                                        StateSetter _setState) {
+                                        StateSetter setState) {
                                       return Container(
                                           decoration: BoxDecoration(
                                             color: Colors.white,
@@ -398,7 +398,7 @@ class _NewAddedReminderScreenState extends State<NewAddedReminderScreen> {
                                                 itemBuilder: (_, i) {
                                                   return ListTile(
                                                     onTap: (() {
-                                                      _setState(() {
+                                                      setState(() {
                                                         selectedSnoozIndex = i;
                                                         selectSnooz =
                                                             snoozTime[i]['id']
@@ -436,7 +436,7 @@ class _NewAddedReminderScreenState extends State<NewAddedReminderScreen> {
                                                 itemBuilder: (_, i) {
                                                   return ListTile(
                                                     onTap: (() {
-                                                      _setState(() {
+                                                      setState(() {
                                                         selectedrepeatIndex = i;
                                                         selectedRepeat =
                                                             "${i + 1}";
@@ -457,7 +457,7 @@ class _NewAddedReminderScreenState extends State<NewAddedReminderScreen> {
                           leading: const Icon(Icons.snooze_outlined),
                           title: const Text('Snooze'),
                           trailing: CupertinoSwitch(
-                            activeColor: AppColors.primaryColor,
+                            activeTrackColor: AppColors.primaryColor,
                             value: snooz,
                             onChanged: (bool value) {
                               snooz = value;
@@ -483,7 +483,7 @@ class _NewAddedReminderScreenState extends State<NewAddedReminderScreen> {
                     Get.back();
                   },
                   style:
-                      ElevatedButton.styleFrom(primary: Colors.grey.shade600),
+                      ElevatedButton.styleFrom(backgroundColor: Colors.grey.shade600),
                   child: Padding(
                     padding: EdgeInsets.all(5.r),
                     child: Text(
@@ -507,12 +507,12 @@ class _NewAddedReminderScreenState extends State<NewAddedReminderScreen> {
                         message: const Text('Setting alarm ...'),
                       ),
                     );
-                    print(response);
+                    debugPrint(response.toString());
                     // if (response) {
 
                     // }
                   },
-                  style: ElevatedButton.styleFrom(primary: Colors.green),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
                   child: Padding(
                     padding: EdgeInsets.all(5.r),
                     child: Text(
@@ -529,7 +529,7 @@ class _NewAddedReminderScreenState extends State<NewAddedReminderScreen> {
     );
   }
 
-  bottomSheetForAlarmNames(BuildContext context) {
+  void bottomSheetForAlarmNames(BuildContext context) {
     alarmController.clear();
     getNameSuggestions();
     Get.bottomSheet(
@@ -653,7 +653,7 @@ class _NewAddedReminderScreenState extends State<NewAddedReminderScreen> {
     );
   }
 
-  toggleWeekDays([bool select = false]) {
+  void toggleWeekDays([bool select = false]) {
     selectedWeekDaysNameList.clear();
     for (int i = 0; i < 7; i++) {
       setState(() {
@@ -665,13 +665,13 @@ class _NewAddedReminderScreenState extends State<NewAddedReminderScreen> {
     }
   }
 
-  computeWeekDaysNames() {
+  void computeWeekDaysNames() {
     selectedWeekDaysNameList.clear();
     weekDayList.asMap().forEach((index, value) {
       if (value) {
         selectedWeekDaysNameList.add(weekDaysName[index]);
       }
     });
-    print(selectedWeekDaysNameList);
+    debugPrint(selectedWeekDaysNameList.toString());
   }
 }

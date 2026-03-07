@@ -10,8 +10,8 @@ import '../../services/base_client.dart';
 
 class KnowledgeScreen extends StatefulWidget {
   const KnowledgeScreen({
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   @override
   KnowledgeScreenState createState() => KnowledgeScreenState();
@@ -24,14 +24,30 @@ class KnowledgeScreenState extends State<KnowledgeScreen>
   bool isLoading = true;
   List categories = [];
 
-  getCategories(context) async {
-    final response = await baseClient.get('blogs/categories', true);
-    print(response);
-    if (response['success']) {
-      categories = response['data'];
-      _tabController = TabController(
-          length: categories.length, vsync: this, initialIndex: 0);
-      _tabController!.addListener(_handleTabIndex);
+  Future<void> getCategories(BuildContext context) async {
+    try {
+      final response = await baseClient.get('blogs/categories', true);
+      debugPrint(response.toString());
+
+      if (response is Map && response['success'] == true) {
+        categories = (response['data'] as List?) ?? [];
+
+        _tabController?.removeListener(_handleTabIndex);
+        _tabController?.dispose();
+
+        if (categories.isNotEmpty) {
+          _tabController = TabController(
+              length: categories.length, vsync: this, initialIndex: 0);
+          _tabController!.addListener(_handleTabIndex);
+        } else {
+          _tabController = null;
+        }
+      } else {
+        categories = [];
+      }
+    } catch (_) {
+      categories = [];
+    } finally {
       if (mounted) {
         isLoading = false;
         setState(() {});
@@ -47,13 +63,15 @@ class KnowledgeScreenState extends State<KnowledgeScreen>
 
   @override
   void dispose() {
-    _tabController!.removeListener(_handleTabIndex);
-    _tabController!.dispose();
+    _tabController?.removeListener(_handleTabIndex);
+    _tabController?.dispose();
     super.dispose();
   }
 
   void _handleTabIndex() {
-    setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -190,7 +208,7 @@ class KnowledgeScreenState extends State<KnowledgeScreen>
 
 class TabBody extends StatefulWidget {
   final dynamic categoryId;
-  const TabBody({Key? key, required this.categoryId}) : super(key: key);
+  const TabBody({super.key, required this.categoryId});
 
   @override
   State<TabBody> createState() => _TabBodyState();
@@ -207,27 +225,36 @@ class _TabBodyState extends State<TabBody> {
   final RefreshController refreshController =
       RefreshController(initialRefresh: true);
 
-  getData(context, currentPage) async {
+  Future<dynamic> getData(BuildContext context, int currentPage) async {
     isLoading = true;
     setState(() {});
-    final resp = await baseClient.get(
-        'blogs?category=${widget.categoryId}&search=$searchKey&page=$currentPage',
-        true);
-    // print(resp["data"]["data_records"]);
-    if (resp['success']) {
-      if (resp["data"]["data_records"] != null) {
-        double pageCount = resp["data"]["data_records"]['total_records'] /
-            resp["data"]["data_records"]['limit'];
-
-        totalpage = pageCount.ceil();
+    try {
+      final resp = await baseClient.get(
+          'blogs?category=${widget.categoryId}&search=$searchKey&page=$currentPage',
+          true);
+      if (resp is Map && resp['success'] == true && resp['data'] is Map) {
+        final records = (resp["data"] as Map)["data_records"];
+        if (records is Map &&
+            records['total_records'] != null &&
+            records['limit'] != null &&
+            records['limit'] != 0) {
+          double pageCount = records['total_records'] / records['limit'];
+          totalpage = pageCount.ceil();
+        }
+        return (resp['data'] as Map)['data'] ?? [];
       }
-      return resp['data']['data'];
+      return [];
+    } catch (_) {
+      return [];
+    } finally {
+      isLoading = false;
+      if (mounted) {
+        setState(() {});
+      }
     }
-    isLoading = false;
-    setState(() {});
   }
 
-  _onRefresh() async {
+  Future<void> _onRefresh() async {
     var data = await getData(context, currentPage);
     listData = data ?? [];
     if (mounted) setState(() {});
@@ -240,9 +267,11 @@ class _TabBodyState extends State<TabBody> {
       refreshController.loadNoData();
     } else {
       var data = await getData(context, currentPage);
-      for (var i = 0; i < data.length; i++) {
-        if (data[i]['tag'] != 'folder') {
-          listData.add(data[i]);
+      if (data is List) {
+        for (var i = 0; i < data.length; i++) {
+          if (data[i]['tag'] != 'folder') {
+            listData.add(data[i]);
+          }
         }
       }
       if (mounted) setState(() {});

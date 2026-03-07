@@ -1,4 +1,3 @@
-import 'package:docuhealth/contstants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -11,14 +10,13 @@ class KnowledgeCard extends StatefulWidget {
   final VoidCallback onPress;
 
   const KnowledgeCard(
-      {Key? key,
+      {super.key,
       required this.title,
       required this.subtitle,
       required this.node,
       required this.node1,
       required this.onPress,
-      required this.path})
-      : super(key: key);
+      required this.path});
 
   @override
   State<KnowledgeCard> createState() => _KnowledgeCardState();

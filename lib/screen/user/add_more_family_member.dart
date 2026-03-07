@@ -9,7 +9,7 @@ import '../../contstants/app_colors.dart';
 import '../../theme.dart';
 
 class AddNewFamilyMember extends StatefulWidget {
-  const AddNewFamilyMember({Key? key}) : super(key: key);
+  const AddNewFamilyMember({super.key});
 
   @override
   State<AddNewFamilyMember> createState() => _AddNewFamilyMemberState();
@@ -35,15 +35,20 @@ class _AddNewFamilyMemberState extends State<AddNewFamilyMember> {
     'Wife',
   ];
 
-  Future<bool> onRegisterPress(context) async {
+  Future<bool> onRegisterPress(BuildContext context) async {
     var data = {
       "name": nameController.text,
-      "relation": relationController.text
+      "relation": relationController.text,
+      // Backend DB enum supports: Male/Female/Other.
+      "gender": "Other",
     };
-    final response = await baseClient.post('profile/create', data, true);
-    if (response['success']) {
-      return true;
-    } else {
+    try {
+      final response = await baseClient.post('profile/create', data, true);
+      if (response is Map && response['success'] == true) {
+        return true;
+      }
+      return false;
+    } catch (_) {
       return false;
     }
   }
@@ -101,6 +106,7 @@ class _AddNewFamilyMemberState extends State<AddNewFamilyMember> {
                         if (v!.isEmpty) {
                           return "Name is required";
                         }
+                        return null;
                       },
                       inputFormatters: [
                         FilteringTextInputFormatter.allow(RegExp("[ a-zA-Z]")),
@@ -124,11 +130,12 @@ class _AddNewFamilyMemberState extends State<AddNewFamilyMember> {
                         "Select relation",
                         Icons.group,
                       ),
-                      value: dropdownvalue,
+                      initialValue: dropdownvalue,
                       validator: (v) {
                         if (relationController.text.isEmpty) {
                           return "Relation is required";
                         }
+                        return null;
                       },
                       icon: const Icon(Icons.keyboard_arrow_down),
                       items: items.map((String items) {
@@ -164,10 +171,10 @@ class _AddNewFamilyMemberState extends State<AddNewFamilyMember> {
                         message: const Text('Saving profile please wait...'),
                       ),
                     );
-                    print(resp);
-                    if (resp) {
+                    if (resp == true) {
                       Get.back();
                     } else {
+                      // ignore: use_build_context_synchronously
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text("Someting went wrong!"),

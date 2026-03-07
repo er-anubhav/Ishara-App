@@ -7,15 +7,14 @@ import '../../contstants/app_colors.dart';
 import 'upload_document.dart';
 
 class SelectFolderCategory extends StatefulWidget {
-  final images;
+  final dynamic images;
   final int? selectedFolder;
   final bool ispdf;
   const SelectFolderCategory(
-      {Key? key,
+      {super.key,
       required this.images,
       required this.selectedFolder,
-      required this.ispdf})
-      : super(key: key);
+      required this.ispdf});
 
   @override
   State<SelectFolderCategory> createState() => _SelectFolderCategoryState();
