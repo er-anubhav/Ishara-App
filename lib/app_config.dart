@@ -3,6 +3,12 @@ const String baseUrl = String.fromEnvironment(
   defaultValue: 'http://147.93.96.116:9000/api/v1/',
 );
 
+String get accountDeletionUrl {
+  final apiUri = Uri.parse(baseUrl);
+  final portSegment = apiUri.hasPort ? ':${apiUri.port}' : '';
+  return '${apiUri.scheme}://${apiUri.host}$portSegment/account-deletion';
+}
+
 // MQTT Broker Configuration
 const String mqttBrokerHost = String.fromEnvironment(
   'MQTT_HOST',

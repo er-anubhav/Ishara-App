@@ -361,7 +361,7 @@ class _DashboardState extends State<Dashboard> {
                       borderRadius: BorderRadius.circular(20.r),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.primaryColor.withOpacity(0.2),
+                          color: AppColors.primaryColor.withValues(alpha: 0.2),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),
@@ -372,7 +372,7 @@ class _DashboardState extends State<Dashboard> {
                         Container(
                           padding: EdgeInsets.all(12.r),
                           decoration: BoxDecoration(
-                            color: AppColors.primaryColor.withOpacity(0.15),
+                            color: AppColors.primaryColor.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(15.r),
                           ),
                           child: Icon(

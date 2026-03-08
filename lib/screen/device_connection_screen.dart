@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -433,7 +433,7 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
         borderRadius: BorderRadius.circular(20.r),
         boxShadow: [
           BoxShadow(
-            color: (isConnected ? AppColors.primaryColor : Colors.grey).withOpacity(0.2),
+            color: (isConnected ? AppColors.primaryColor : Colors.grey).withValues(alpha: 0.2),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -446,7 +446,7 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
               Container(
                 padding: EdgeInsets.all(12.r),
                 decoration: BoxDecoration(
-                  color: (isConnected ? AppColors.primaryColor : Colors.grey).withOpacity(0.15),
+                  color: (isConnected ? AppColors.primaryColor : Colors.grey).withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(15.r),
                 ),
                 child: Icon(
@@ -498,7 +498,7 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
             Container(
               padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.7),
+                color: Colors.white.withValues(alpha: 0.7),
                 borderRadius: BorderRadius.circular(12.r),
               ),
               child: Row(
@@ -541,7 +541,7 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
                       }
                     },
                     activeThumbColor: AppColors.primaryColor,
-                    activeTrackColor: AppColors.primaryColor.withOpacity(0.4),
+                    activeTrackColor: AppColors.primaryColor.withValues(alpha: 0.4),
                   ),
                 ],
               ),
@@ -551,7 +551,7 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
             Container(
               padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.7),
+                color: Colors.white.withValues(alpha: 0.7),
                 borderRadius: BorderRadius.circular(12.r),
               ),
               child: Row(
@@ -592,7 +592,7 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
                       });
                     },
                     activeThumbColor: Colors.green,
-                    activeTrackColor: Colors.green.withOpacity(0.4),
+                    activeTrackColor: Colors.green.withValues(alpha: 0.4),
                   ),
                 ],
               ),
@@ -602,7 +602,7 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
             Container(
               padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.7),
+                color: Colors.white.withValues(alpha: 0.7),
                 borderRadius: BorderRadius.circular(12.r),
               ),
               child: Row(
@@ -624,7 +624,7 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
                                   : (_deviceStatus == BleDeviceStatus.idle || _deviceStatus == BleDeviceStatus.noFinger)
                                       ? Colors.orange
                                       : Colors.grey)
-                              .withOpacity(0.5),
+                              .withValues(alpha: 0.5),
                           blurRadius: 6,
                           spreadRadius: 2,
                         ),
@@ -708,7 +708,7 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
         border: Border.all(color: Colors.blue.shade200, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.blue.withOpacity(0.1),
+            color: Colors.blue.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -722,7 +722,7 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
               Container(
                 padding: EdgeInsets.all(10.r),
                 decoration: BoxDecoration(
-                  color: _isConnecting ? AppColors.primaryColor.withOpacity(0.2) : Colors.blue.shade100,
+                  color: _isConnecting ? AppColors.primaryColor.withValues(alpha: 0.2) : Colors.blue.shade100,
                   borderRadius: BorderRadius.circular(12.r),
                 ),
                 child: _isConnecting
@@ -885,7 +885,7 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
           decoration: BoxDecoration(
             gradient: AppColors.primaryLinearGradient,
             borderRadius: BorderRadius.circular(15.r),
-            border: Border.all(color: AppColors.primaryColor.withOpacity(0.3), width: 1),
+            border: Border.all(color: AppColors.primaryColor.withValues(alpha: 0.3), width: 1),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -985,7 +985,7 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
         return Container(
           margin: EdgeInsets.only(bottom: 10.h),
           decoration: BoxDecoration(
-            color: isConnected ? AppColors.primaryColor.withOpacity(0.1) : Colors.white,
+            color: isConnected ? AppColors.primaryColor.withValues(alpha: 0.1) : Colors.white,
             borderRadius: BorderRadius.circular(15.r),
             border: Border.all(
               color: isConnected ? AppColors.primaryColor : Colors.grey.shade300,
@@ -993,7 +993,7 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.withOpacity(0.1),
+                color: Colors.grey.withValues(alpha: 0.1),
                 blurRadius: 4,
                 offset: Offset(0, 2),
               ),
@@ -1005,7 +1005,7 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
               padding: EdgeInsets.all(10.r),
               decoration: BoxDecoration(
                 color: isConnected 
-                    ? AppColors.primaryColor.withOpacity(0.2)
+                    ? AppColors.primaryColor.withValues(alpha: 0.2)
                     : Colors.grey.shade100,
                 borderRadius: BorderRadius.circular(12.r),
               ),
@@ -1108,7 +1108,7 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
             Container(
               padding: EdgeInsets.all(12.r),
               decoration: BoxDecoration(
-                color: mqtt.isConnected ? Colors.green.withOpacity(0.15) : Colors.red.withOpacity(0.15),
+                color: mqtt.isConnected ? Colors.green.withValues(alpha: 0.15) : Colors.red.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(15.r),
               ),
               child: Icon(
@@ -1229,3 +1229,4 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
     );
   }
 }
+

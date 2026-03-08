@@ -76,7 +76,7 @@ class DeviceVital {
   String get formattedValue {
     final unitStr = unit ?? '';
     if (vitalType == typeBodyTemp) {
-      return '${value.toStringAsFixed(1)} $unitStr';
+      return '${value.toStringAsFixed(2)} $unitStr';
     }
     return '${value.toStringAsFixed(0)} $unitStr';
   }

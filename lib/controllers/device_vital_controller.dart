@@ -288,7 +288,7 @@ class DeviceVitalController extends ChangeNotifier {
     final unit = vital.unit ?? '';
 
     if (vitalType == DeviceVital.typeBodyTemp) {
-      return '${vital.value.toStringAsFixed(1)} $unit';
+      return '${vital.value.toStringAsFixed(2)} $unit';
     }
     return '${vital.value.toStringAsFixed(0)} $unit';
   }

@@ -3,12 +3,14 @@ import 'package:docuhealth/main.dart';
 import 'package:docuhealth/screen/cms_screen.dart';
 import 'package:docuhealth/screen/user/add_more_family_member.dart';
 import 'package:docuhealth/screen/user/my_profile.dart';
+import 'package:docuhealth/utils/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:future_progress_dialog/future_progress_dialog.dart';
 import 'package:get/get.dart';
 import '../../helper/get_storage_helper.dart';
+import '../../app_config.dart';
 import '../../services/base_client.dart';
 import '../home_screen.dart';
 
@@ -69,6 +71,100 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return false;
     } catch (_) {
       return false;
+    }
+  }
+
+  Future<void> _resetSession() async {
+    await box.erase();
+    GetStorageHelper.setinitialdata();
+    box.write('is_logged_in', false);
+    if (!mounted) return;
+    Get.offNamedUntil('/Splash', (route) => false);
+  }
+
+  Future<void> _openDeletionHelpPage() async {
+    try {
+      await Utils.launchInBrowser(Uri.parse(accountDeletionUrl));
+    } catch (_) {
+      Get.snackbar(
+        "Failed",
+        "Unable to open the deletion help page right now.",
+      );
+    }
+  }
+
+  Future<void> _deleteAccount() async {
+    try {
+      final response = await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => FutureProgressDialog(
+          baseClient.post('delete-account', {}, true),
+          message: const Text('Deleting account...'),
+        ),
+      );
+
+      if (response is Map && response['success'] == true) {
+        Get.snackbar(
+          "Success",
+          response['message']?.toString() ?? "Account deleted successfully.",
+        );
+        await _resetSession();
+        return;
+      }
+
+      Get.snackbar(
+        "Failed",
+        response is Map
+            ? response['message']?.toString() ?? "Unable to delete account."
+            : "Unable to delete account.",
+      );
+    } catch (_) {
+      Get.snackbar(
+        "Failed",
+        "Unable to delete account right now. You can use the deletion help page instead.",
+      );
+    }
+  }
+
+  Future<void> _showDeleteAccountDialog() async {
+    final action = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text("Delete account"),
+        content: const Text(
+          "This permanently deletes your account, profiles, and associated data. This action cannot be undone.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop('help');
+            },
+            child: const Text("Help page"),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+            },
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop('delete');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade700,
+            ),
+            child: const Text("Delete"),
+          ),
+        ],
+      ),
+    );
+
+    if (action == 'help') {
+      await _openDeletionHelpPage();
+    } else if (action == 'delete') {
+      await _deleteAccount();
     }
   }
 
@@ -447,9 +543,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       radius: 20,
                       backgroundColor: Colors.grey.shade200,
                       child: Icon(
-                        Icons.logout,
-                        color: AppColors.primaryColor,
-                      ),
+                      Icons.logout,
+                      color: AppColors.primaryColor,
+                    ),
                     ),
                     title: Text(
                       "Log out",
@@ -470,6 +566,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     trailing: const Icon(
                       Icons.arrow_forward_ios,
                       size: 15,
+                    ),
+                  ),
+                  ListTile(
+                    onTap: _showDeleteAccountDialog,
+                    leading: CircleAvatar(
+                      radius: 20,
+                      backgroundColor: Colors.red.shade50,
+                      child: Icon(
+                        Icons.delete_forever,
+                        color: Colors.red.shade700,
+                      ),
+                    ),
+                    title: Text(
+                      "Delete account",
+                      style: TextStyle(
+                        fontSize: 18.sp,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.red.shade700,
+                      ),
+                    ),
+                    subtitle: Text(
+                      "Permanently delete your account and data",
+                      style: TextStyle(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.lightGreyTextColor,
+                      ),
+                    ),
+                    trailing: Icon(
+                      Icons.arrow_forward_ios,
+                      size: 15,
+                      color: Colors.red.shade700,
                     ),
                   ),
                 ],

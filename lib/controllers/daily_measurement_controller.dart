@@ -150,8 +150,8 @@ class DailyMeasurementController extends ChangeNotifier {
                   // Convert to Fahrenheit if needed so the graph is uniform
                   if (isCelsius) {
                     tempValue = (tempValue * 9 / 5) + 32;
-                    // Round to 1 decimal place
-                    tempValue = double.parse(tempValue.toStringAsFixed(1));
+                    // Round to 2 decimal places
+                    tempValue = double.parse(tempValue.toStringAsFixed(2));
                   }
                   
                   graphValue.add(GraphData(label, tempValue));

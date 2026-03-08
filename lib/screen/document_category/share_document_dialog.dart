@@ -106,7 +106,7 @@ class _ShareDocumentDialogState extends State<ShareDocumentDialog> {
       return resp;
     } else {
       SharePlus.instance.share(ShareParams(
-          text: 'check out this amazing app https://play.google.com/store/apps/details?id=app.docuhealth.com'));
+          text: 'check out this amazing app https://play.google.com/store/apps/details?id=com.arun.docuhealth'));
       return true;
     }
   }

@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:docuhealth/components/image_preview_screen.dart';
@@ -69,12 +69,12 @@ class _DailyMeasurementsState extends State<DailyMeasurements> {
     if (_isRefreshing || !mounted) return;
     
     setState(() => _isRefreshing = true);
+    final controller =
+        Provider.of<DailyMeasurementController>(context, listen: false);
     
     try {
-      await Provider.of<DailyMeasurementController>(context, listen: false)
-          .getMeasurementsData(selectedDate, selectedCategoryFilter);
-      await Provider.of<DailyMeasurementController>(context, listen: false)
-          .getAnalyticsData(selectedTimeFilter, selectedCategoryFilter);
+      await controller.getMeasurementsData(selectedDate, selectedCategoryFilter);
+      await controller.getAnalyticsData(selectedTimeFilter, selectedCategoryFilter);
     } finally {
       if (mounted) {
         setState(() => _isRefreshing = false);
@@ -95,6 +95,175 @@ class _DailyMeasurementsState extends State<DailyMeasurements> {
         focusedDay = selected;
       });
     }
+  }
+
+  Widget _buildBpStatusBanner(BleDeviceStatus status) {
+    final isInflating = status == BleDeviceStatus.inflating;
+    final accentColor = isInflating ? Colors.indigo.shade700 : Colors.teal.shade700;
+
+    return Container(
+      key: ValueKey(status),
+      width: double.infinity,
+      margin: EdgeInsets.all(10.r),
+      padding: EdgeInsets.symmetric(vertical: 14.h, horizontal: 16.w),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            accentColor.withValues(alpha: 0.08),
+            accentColor.withValues(alpha: 0.18),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: accentColor.withValues(alpha: 0.35)),
+        boxShadow: [
+          BoxShadow(
+            color: accentColor.withValues(alpha: 0.12),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 32.w,
+                height: 32.w,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  shape: BoxShape.circle,
+                ),
+                child: isInflating
+                    ? SizedBox(
+                        width: 18.w,
+                        height: 18.w,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.4,
+                          valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                        ),
+                      )
+                    : Icon(Icons.south_rounded, color: accentColor, size: 20.sp),
+              ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isInflating ? 'Inflating cuff' : 'Deflating cuff',
+                      style: TextStyle(
+                        color: accentColor.withValues(alpha: 0.95),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14.sp,
+                      ),
+                    ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      isInflating
+                          ? 'Keep your arm still and avoid talking.'
+                          : 'Pressure release in progress. Almost done.',
+                      style: TextStyle(
+                        color: accentColor.withValues(alpha: 0.82),
+                        fontWeight: FontWeight.w500,
+                        fontSize: 11.sp,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12.h),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6.r),
+            child: LinearProgressIndicator(
+              minHeight: 7.h,
+              value: isInflating ? null : 0.85,
+              backgroundColor: Colors.white.withValues(alpha: 0.65),
+              valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+            ),
+          ),
+          SizedBox(height: 10.h),
+          Row(
+            children: [
+              _buildBpStageChip(
+                label: 'Inflating',
+                active: isInflating,
+                completed: !isInflating,
+                accentColor: accentColor,
+              ),
+              SizedBox(width: 8.w),
+              _buildBpStageChip(
+                label: 'Deflating',
+                active: !isInflating,
+                completed: false,
+                accentColor: accentColor,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBpStageChip({
+    required String label,
+    required bool active,
+    required bool completed,
+    required Color accentColor,
+  }) {
+    final chipBg = active
+        ? accentColor.withValues(alpha: 0.18)
+        : completed
+            ? Colors.green.withValues(alpha: 0.14)
+            : Colors.white.withValues(alpha: 0.7);
+    final chipBorder = active
+        ? accentColor.withValues(alpha: 0.45)
+        : completed
+            ? Colors.green.withValues(alpha: 0.45)
+            : Colors.grey.withValues(alpha: 0.35);
+    final chipText = active
+        ? accentColor.withValues(alpha: 0.95)
+        : completed
+            ? Colors.green.shade700
+            : Colors.grey.shade600;
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+      decoration: BoxDecoration(
+        color: chipBg,
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: chipBorder),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            completed
+                ? Icons.check_circle
+                : active
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_unchecked,
+            size: 13.sp,
+            color: chipText,
+          ),
+          SizedBox(width: 5.w),
+          Text(
+            label,
+            style: TextStyle(
+              color: chipText,
+              fontSize: 11.sp,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -292,6 +461,13 @@ class _DailyMeasurementsState extends State<DailyMeasurements> {
                           ),
                         ],
                       ),
+                    );
+                  } else if ((status == BleDeviceStatus.inflating || status == BleDeviceStatus.deflating) && selectedCategoryFilter == "BP") {
+                    return AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 250),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      child: _buildBpStatusBanner(status!),
                     );
                   } else if (status != BleDeviceStatus.disconnected && status != BleDeviceStatus.measuring && selectedCategoryFilter == "BP") {
                     return Container(
@@ -819,7 +995,7 @@ class _DailyMeasurementsState extends State<DailyMeasurements> {
       case "Weight":
         return "kg";
       case "Temperature":
-        return "°F";
+        return "Â°F";
       case "SpO2":
         return "%";
       default:
@@ -873,9 +1049,9 @@ class _DailyMeasurementsState extends State<DailyMeasurements> {
         return "Weight: ${measurementData.datas?.weight ?? ''}";
       case "Temperature":
         final tempRaw = measurementData.datas?.temperature ?? '';
-        // If it lacks C or F, assume it's BLE auto-fetched (which is in °F)
+        // If it lacks C or F, assume it's BLE auto-fetched (which is in Â°F)
         if (tempRaw.isNotEmpty && !tempRaw.toLowerCase().contains('c') && !tempRaw.toLowerCase().contains('f')) {
-          return "Temperature: $tempRaw °F";
+          return "Temperature: $tempRaw Â°F";
         }
         return "Temperature: $tempRaw";
       case "SpO2":
@@ -885,3 +1061,6 @@ class _DailyMeasurementsState extends State<DailyMeasurements> {
     }
   }
 }
+
+
+

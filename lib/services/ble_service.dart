@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
@@ -12,9 +12,11 @@ import 'mqtt_service.dart';
 enum BleDeviceStatus {
   disconnected,
   connected,
-  idle,       // Device connected but sending idle/standby values
-  measuring,  // Device connected and sending valid measurements
-  noFinger,   // Specifically for SpO2 1000 detection
+  idle,        // Device connected but sending idle/standby values
+  measuring,   // Device connected and sending valid measurements
+  noFinger,    // Specifically for SpO2 1000 detection
+  inflating,   // BP cuff is inflating
+  deflating,   // BP cuff is deflating
 }
 
 // BLE Measurement data class
@@ -51,8 +53,9 @@ class BleMeasurement {
   String getFormattedValue() {
     switch (category) {
       case 'Temperature':
-        // Raw value in tenths of Fahrenheit (e.g., 986 = 98.6°F)
-        return '${(value / 10).toStringAsFixed(1)} °F';
+        // Support x10 and x100 hardware payloads.
+        final tempValue = value >= 9000 ? (value / 100) : (value / 10);
+        return '${tempValue.toStringAsFixed(2)} °F';
       case 'SpO2':
         // Raw value is percentage * 100 (e.g., 9158 = 91.58%)
         return '${(value / 100).toStringAsFixed(1)}%';
@@ -101,6 +104,8 @@ class BleService {
   BleDeviceStatus _deviceStatus = BleDeviceStatus.disconnected;
   DateTime? _lastValidMeasurement;
   DateTime? _lastNoFinger;
+  DateTime? _lastInflating;
+  DateTime? _lastDeflating;
 
   // Idle timer
   Timer? _idleTimer;
@@ -135,6 +140,20 @@ class BleService {
     _autoSaveEnabled = _box.read(_autoSaveKey) ?? true;
   }
 
+  // Temperature helpers: firmware may send x10 or x100 values.
+  double _temperatureFahrenheitFromRaw(int rawValue) {
+    return rawValue >= 9000 ? (rawValue / 100) : (rawValue / 10);
+  }
+
+  bool _isValidTemperatureRaw(int rawValue) {
+    final tempF = _temperatureFahrenheitFromRaw(rawValue);
+    return tempF >= 95.0 && tempF <= 108.0;
+  }
+
+  String _formatTemperatureRaw(int rawValue) {
+    return '${_temperatureFahrenheitFromRaw(rawValue).toStringAsFixed(2)}°F';
+  }
+
   // Update device status and notify listeners
   void _updateDeviceStatus(BleDeviceStatus status) {
     if (status == BleDeviceStatus.idle) {
@@ -146,12 +165,16 @@ class BleService {
       // Preserve higher priority states if they were active in the last 3 seconds
       if (timeSinceValid <= 3 && _deviceStatus == BleDeviceStatus.measuring) return;
       if (timeSinceNoFinger <= 3 && _deviceStatus == BleDeviceStatus.noFinger) return;
+      final timeSinceInflating = _lastInflating != null ? now.difference(_lastInflating!).inSeconds : 999;
+      final timeSinceDeflating = _lastDeflating != null ? now.difference(_lastDeflating!).inSeconds : 999;
+      if (timeSinceInflating <= 3 && _deviceStatus == BleDeviceStatus.inflating) return;
+      if (timeSinceDeflating <= 3 && _deviceStatus == BleDeviceStatus.deflating) return;
     }
 
     if (_deviceStatus != status) {
       _deviceStatus = status;
       _statusController.add(status);
-      print('🔵 BLE Status changed: $status');
+      debugPrint('ðŸ”µ BLE Status changed: $status');
 
       // Strict MQTT-BLE linkage:
       // MQTT should connect ONLY when BLE is connected.
@@ -159,7 +182,9 @@ class BleService {
       if (status == BleDeviceStatus.connected || 
           status == BleDeviceStatus.measuring || 
           status == BleDeviceStatus.idle ||
-          status == BleDeviceStatus.noFinger) {
+          status == BleDeviceStatus.noFinger ||
+          status == BleDeviceStatus.inflating ||
+          status == BleDeviceStatus.deflating) {
         mqttService.connect();
       } else if (status == BleDeviceStatus.disconnected) {
         mqttService.disconnect();
@@ -172,7 +197,7 @@ class BleService {
     _idleTimer?.cancel();
     if (_deviceStatus != BleDeviceStatus.disconnected) {
       _idleTimer = Timer(_idleTimeout, () {
-        print('⏰ BLE Idle timeout reached (5 min). Disconnecting...');
+        debugPrint('â° BLE Idle timeout reached (5 min). Disconnecting...');
         disconnectDevice();
       });
     }
@@ -238,6 +263,22 @@ class BleService {
                 String data = _decodeData(value);
                 _dataController.add(data);
                 
+                // Detect BP cuff text messages (Inflating.../Deflating...)
+                final lowerData = data.trim().toLowerCase();
+                if (lowerData.contains('inflating')) {
+                  debugPrint('ðŸ“¡ BLE Text: Inflating detected');
+                  _lastInflating = DateTime.now();
+                  _updateDeviceStatus(BleDeviceStatus.inflating);
+                  resetIdleTimer();
+                  return;
+                } else if (lowerData.contains('deflating')) {
+                  debugPrint('ðŸ“¡ BLE Text: Deflating detected');
+                  _lastDeflating = DateTime.now();
+                  _updateDeviceStatus(BleDeviceStatus.deflating);
+                  resetIdleTimer();
+                  return;
+                }
+                
                 // Parse measurement data (like ble_terminal.py)
                 BleMeasurement? measurement = _parseMeasurement(value);
                 if (measurement != null) {
@@ -264,7 +305,7 @@ class BleService {
   BleMeasurement? _parseMeasurement(List<int> data) {
     String rawHex = data.map((b) => b.toRadixString(16).padLeft(2, '0').toUpperCase()).join(' ');
     // Use print for visibility in all console types
-    print('📡 BLE Raw Data: $rawHex (length: ${data.length})');
+    debugPrint('ðŸ“¡ BLE Raw Data: $rawHex (length: ${data.length})');
     
     if (data.length == 4) {
       int bleType = data[0];
@@ -278,8 +319,8 @@ class BleService {
         case 0x01:
           typeName = 'Temperature';
           category = 'Temperature';
-          // Valid temperature range: 95.0°F - 108.0°F (raw: 950-1080)
-          isValid = value >= 950 && value <= 1080;
+          // Valid range in Fahrenheit; supports x10 and x100 payloads.
+          isValid = _isValidTemperatureRaw(value);
           break;
         case 0x02:
           typeName = 'SpO2';
@@ -301,11 +342,11 @@ class BleService {
         default:
           typeName = 'Unknown ($bleType)';
           category = 'Unknown';
-          print('📡 BLE Unknown type: $bleType, value: $value');
+          debugPrint('ðŸ“¡ BLE Unknown type: $bleType, value: $value');
       }
       
       if (isValid) {
-        print('✅ BLE VALID: type=$bleType ($typeName), value=$value, formatted=${_formatValue(category, value)}');
+        debugPrint('âœ… BLE VALID: type=$bleType ($typeName), value=$value, formatted=${_formatValue(category, value)}');
         _lastValidMeasurement = DateTime.now();
         _updateDeviceStatus(BleDeviceStatus.measuring);
 
@@ -318,16 +359,16 @@ class BleService {
         }
         _checkAndSaveCombinedBP();
       } else if (bleType == 0x02 && value == 1000) {
-        print('📡 BLE STATE: No Finger detected');
+        debugPrint('ðŸ“¡ BLE STATE: No Finger detected');
         _lastNoFinger = DateTime.now();
         _updateDeviceStatus(BleDeviceStatus.noFinger);
       } else if (bleType == 0x01 || bleType == 0x02 || bleType == 0x03 || bleType == 0x04) {
         // Known type but invalid value (not 1000)
-        print('❌ BLE INVALID (out of range): type=$bleType ($typeName), value=$value');
+        debugPrint('âŒ BLE INVALID (out of range): type=$bleType ($typeName), value=$value');
         _updateDeviceStatus(BleDeviceStatus.idle);
       } else {
         // Unknown or diagnostic packet - don't change global status to avoid flickering
-        print('📡 BLE INFO: type=$bleType, value=$value');
+        debugPrint('ðŸ“¡ BLE INFO: type=$bleType, value=$value');
       }
       resetIdleTimer(); // Reset timer on any received characteristic value
       
@@ -343,7 +384,7 @@ class BleService {
     }
     
     // Try to parse other formats
-    print('📡 BLE Data not 4 bytes, trying alternative parsing...');
+    debugPrint('ðŸ“¡ BLE Data not 4 bytes, trying alternative parsing...');
     return null;
   }
   
@@ -364,7 +405,7 @@ class BleService {
   String _formatValue(String category, int value) {
     switch (category) {
       case 'Temperature':
-        return '${(value / 10).toStringAsFixed(1)}°F';
+        return _formatTemperatureRaw(value);
       case 'SpO2':
         return '${(value / 100).toStringAsFixed(1)}%';
       case 'BP_SYS':
@@ -478,8 +519,8 @@ class BleService {
       Map<String, dynamic> datas;
       
       if (measurement.category == 'Temperature') {
-        // Store numeric value only (e.g., "98.6" not "98.6 °F")
-        final tempValue = (measurement.value / 10).toStringAsFixed(1);
+        // Store numeric value only (e.g., "98.6" not "98.6 Â°F")
+        final tempValue = _temperatureFahrenheitFromRaw(measurement.value).toStringAsFixed(2);
         datas = {"temperature": tempValue};
       } else if (measurement.category == 'SpO2') {
         // Store numeric value only (e.g., "92.1" not "92.1%")
@@ -576,3 +617,6 @@ class BleService {
     _measurementSavedController.close();
   }
 }
+
+
+
