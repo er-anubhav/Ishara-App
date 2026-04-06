@@ -1,8 +1,7 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:intl/intl.dart';
 import 'base_client.dart';
@@ -12,11 +11,11 @@ import 'mqtt_service.dart';
 enum BleDeviceStatus {
   disconnected,
   connected,
-  idle,        // Device connected but sending idle/standby values
-  measuring,   // Device connected and sending valid measurements
-  noFinger,    // Specifically for SpO2 1000 detection
-  inflating,   // BP cuff is inflating
-  deflating,   // BP cuff is deflating
+  idle, // Device connected but sending idle/standby values
+  measuring, // Device connected and sending valid measurements
+  noFinger, // Specifically for SpO2 1000 detection
+  inflating, // BP cuff is inflating
+  deflating, // BP cuff is deflating
 }
 
 // BLE Measurement data class
@@ -40,14 +39,14 @@ class BleMeasurement {
   });
 
   Map<String, dynamic> toJson() => {
-    'type': type,
-    'type_name': typeName,
-    'category': category,
-    'value': value,
-    'raw_hex': rawHex,
-    'timestamp': timestamp.toIso8601String(),
-    'is_valid': isValid,
-  };
+        'type': type,
+        'type_name': typeName,
+        'category': category,
+        'value': value,
+        'raw_hex': rawHex,
+        'timestamp': timestamp.toIso8601String(),
+        'is_valid': isValid,
+      };
 
   // Get formatted value based on type
   String getFormattedValue() {
@@ -62,6 +61,8 @@ class BleMeasurement {
       case 'BP_SYS':
       case 'BP_DIA':
         return '$value mmHg';
+      case 'Pulse':
+        return '$value bpm';
       default:
         return '$value';
     }
@@ -69,20 +70,26 @@ class BleMeasurement {
 }
 
 class BleService {
-    // MQTT integration
-    void listenAndPushToMqtt(Stream<BleMeasurement> stream, String Function()? getDeviceName) {
-      stream.listen((measurement) async {
-        if (measurement.isValid) {
-          final deviceName = getDeviceName?.call() ?? 'UnknownDevice';
-          // Use category as vitalType, value as formatted value
-          await mqttService.publishVital(
-            deviceName: deviceName,
-            vitalType: measurement.category,
-            value: measurement.getFormattedValue(),
-          );
-        }
-      });
-    }
+  static const String _nusServiceUuid = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+  static const String _nusRxCharUuid = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+  static const String _nusTxCharUuid = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+
+  // MQTT integration
+  void listenAndPushToMqtt(
+      Stream<BleMeasurement> stream, String Function()? getDeviceName) {
+    stream.listen((measurement) async {
+      if (measurement.isValid) {
+        final deviceName = getDeviceName?.call() ?? 'UnknownDevice';
+        // Use category as vitalType, value as formatted value
+        await mqttService.publishVital(
+          deviceName: deviceName,
+          vitalType: measurement.category,
+          value: measurement.getFormattedValue(),
+        );
+      }
+    });
+  }
+
   static final BleService _instance = BleService._internal();
   factory BleService() => _instance;
   BleService._internal();
@@ -91,13 +98,16 @@ class BleService {
   final _baseClient = BaseClient();
   BluetoothDevice? _connectedDevice;
   StreamSubscription<List<int>>? _characteristicSubscription;
-  final StreamController<String> _dataController = StreamController<String>.broadcast();
-  final StreamController<BleMeasurement> _measurementController = StreamController<BleMeasurement>.broadcast();
-  final StreamController<BluetoothConnectionState> _connectionController = 
+  BluetoothCharacteristic? _writeCharacteristic;
+  final StreamController<String> _dataController =
+      StreamController<String>.broadcast();
+  final StreamController<BleMeasurement> _measurementController =
+      StreamController<BleMeasurement>.broadcast();
+  final StreamController<BluetoothConnectionState> _connectionController =
       StreamController<BluetoothConnectionState>.broadcast();
-  final StreamController<BleDeviceStatus> _statusController = 
+  final StreamController<BleDeviceStatus> _statusController =
       StreamController<BleDeviceStatus>.broadcast();
-  final StreamController<String> _measurementSavedController = 
+  final StreamController<String> _measurementSavedController =
       StreamController<String>.broadcast();
 
   // Device status
@@ -124,9 +134,11 @@ class BleService {
   BluetoothDevice? get connectedDevice => _connectedDevice;
   Stream<String> get dataStream => _dataController.stream;
   Stream<BleMeasurement> get measurementStream => _measurementController.stream;
-  Stream<BluetoothConnectionState> get connectionStream => _connectionController.stream;
+  Stream<BluetoothConnectionState> get connectionStream =>
+      _connectionController.stream;
   Stream<BleDeviceStatus> get statusStream => _statusController.stream;
-  Stream<String> get measurementSavedStream => _measurementSavedController.stream;
+  Stream<String> get measurementSavedStream =>
+      _measurementSavedController.stream;
   BleDeviceStatus get deviceStatus => _deviceStatus;
   bool get isAutoSaveEnabled => _autoSaveEnabled;
 
@@ -142,12 +154,16 @@ class BleService {
 
   // Temperature helpers: firmware may send x10 or x100 values.
   double _temperatureFahrenheitFromRaw(int rawValue) {
-    return rawValue >= 9000 ? (rawValue / 100) : (rawValue / 10);
+    // Home-SpO2 firmware sends x100 (e.g. 9860 = 98.60F).
+    // Keep backward compatibility with old x10 payloads.
+    return rawValue >= 3000 ? (rawValue / 100) : (rawValue / 10);
   }
 
   bool _isValidTemperatureRaw(int rawValue) {
+    if (rawValue <= 0) return false;
     final tempF = _temperatureFahrenheitFromRaw(rawValue);
-    return tempF >= 95.0 && tempF <= 108.0;
+    // Relaxed range to avoid rejecting valid probe data.
+    return tempF >= 50.0 && tempF <= 150.0;
   }
 
   String _formatTemperatureRaw(int rawValue) {
@@ -159,16 +175,34 @@ class BleService {
     if (status == BleDeviceStatus.idle) {
       // Prevent rapid flickering from interleaved sensor packets
       final now = DateTime.now();
-      final timeSinceValid = _lastValidMeasurement != null ? now.difference(_lastValidMeasurement!).inSeconds : 999;
-      final timeSinceNoFinger = _lastNoFinger != null ? now.difference(_lastNoFinger!).inSeconds : 999;
-      
+      final timeSinceValid = _lastValidMeasurement != null
+          ? now.difference(_lastValidMeasurement!).inSeconds
+          : 999;
+      final timeSinceNoFinger = _lastNoFinger != null
+          ? now.difference(_lastNoFinger!).inSeconds
+          : 999;
+
       // Preserve higher priority states if they were active in the last 3 seconds
-      if (timeSinceValid <= 3 && _deviceStatus == BleDeviceStatus.measuring) return;
-      if (timeSinceNoFinger <= 3 && _deviceStatus == BleDeviceStatus.noFinger) return;
-      final timeSinceInflating = _lastInflating != null ? now.difference(_lastInflating!).inSeconds : 999;
-      final timeSinceDeflating = _lastDeflating != null ? now.difference(_lastDeflating!).inSeconds : 999;
-      if (timeSinceInflating <= 3 && _deviceStatus == BleDeviceStatus.inflating) return;
-      if (timeSinceDeflating <= 3 && _deviceStatus == BleDeviceStatus.deflating) return;
+      if (timeSinceValid <= 3 && _deviceStatus == BleDeviceStatus.measuring) {
+        return;
+      }
+      if (timeSinceNoFinger <= 3 && _deviceStatus == BleDeviceStatus.noFinger) {
+        return;
+      }
+      final timeSinceInflating = _lastInflating != null
+          ? now.difference(_lastInflating!).inSeconds
+          : 999;
+      final timeSinceDeflating = _lastDeflating != null
+          ? now.difference(_lastDeflating!).inSeconds
+          : 999;
+      if (timeSinceInflating <= 3 &&
+          _deviceStatus == BleDeviceStatus.inflating) {
+        return;
+      }
+      if (timeSinceDeflating <= 3 &&
+          _deviceStatus == BleDeviceStatus.deflating) {
+        return;
+      }
     }
 
     if (_deviceStatus != status) {
@@ -179,8 +213,8 @@ class BleService {
       // Strict MQTT-BLE linkage:
       // MQTT should connect ONLY when BLE is connected.
       // MQTT should immediately disconnect when BLE is not connected.
-      if (status == BleDeviceStatus.connected || 
-          status == BleDeviceStatus.measuring || 
+      if (status == BleDeviceStatus.connected ||
+          status == BleDeviceStatus.measuring ||
           status == BleDeviceStatus.idle ||
           status == BleDeviceStatus.noFinger ||
           status == BleDeviceStatus.inflating ||
@@ -209,7 +243,8 @@ class BleService {
   static const String _autoConnectKey = 'ble_auto_connect';
 
   // Scan for devices
-  Stream<List<ScanResult>> scanForDevices({Duration timeout = const Duration(seconds: 10)}) {
+  Stream<List<ScanResult>> scanForDevices(
+      {Duration timeout = const Duration(seconds: 10)}) {
     FlutterBluePlus.startScan(timeout: timeout);
     return FlutterBluePlus.scanResults;
   }
@@ -224,13 +259,14 @@ class BleService {
     try {
       await device.connect(autoConnect: false);
       _connectedDevice = device;
-      
+
       // Listen for connection state changes
       device.connectionState.listen((state) {
         _connectionController.add(state);
         if (state == BluetoothConnectionState.disconnected) {
           _connectedDevice = null;
           _characteristicSubscription?.cancel();
+          _writeCharacteristic = null;
           _updateDeviceStatus(BleDeviceStatus.disconnected);
         } else if (state == BluetoothConnectionState.connected) {
           _updateDeviceStatus(BleDeviceStatus.connected);
@@ -240,7 +276,7 @@ class BleService {
 
       // Discover services and subscribe to notifications
       await _discoverAndSubscribe(device);
-      
+
       return true;
     } catch (e) {
       debugPrint('BLE Connect Error: $e');
@@ -252,50 +288,115 @@ class BleService {
   Future<void> _discoverAndSubscribe(BluetoothDevice device) async {
     try {
       List<BluetoothService> services = await device.discoverServices();
-      
+
+      BluetoothCharacteristic? notifyChar;
+      BluetoothCharacteristic? writeChar;
+
+      // Prefer Nordic UART Service characteristics.
       for (BluetoothService service in services) {
-        for (BluetoothCharacteristic characteristic in service.characteristics) {
-          // Subscribe to characteristics that support notify or indicate
-          if (characteristic.properties.notify || characteristic.properties.indicate) {
-            await characteristic.setNotifyValue(true);
-            _characteristicSubscription = characteristic.lastValueStream.listen((value) {
-              if (value.isNotEmpty) {
-                String data = _decodeData(value);
-                _dataController.add(data);
-                
-                // Detect BP cuff text messages (Inflating.../Deflating...)
-                final lowerData = data.trim().toLowerCase();
-                if (lowerData.contains('inflating')) {
-                  debugPrint('ðŸ“¡ BLE Text: Inflating detected');
-                  _lastInflating = DateTime.now();
-                  _updateDeviceStatus(BleDeviceStatus.inflating);
-                  resetIdleTimer();
-                  return;
-                } else if (lowerData.contains('deflating')) {
-                  debugPrint('ðŸ“¡ BLE Text: Deflating detected');
-                  _lastDeflating = DateTime.now();
-                  _updateDeviceStatus(BleDeviceStatus.deflating);
-                  resetIdleTimer();
-                  return;
-                }
-                
-                // Parse measurement data (like ble_terminal.py)
-                BleMeasurement? measurement = _parseMeasurement(value);
-                if (measurement != null) {
-                  debugPrint('Emitting measurement to stream: ${measurement.category}, valid=${measurement.isValid}');
-                  _measurementController.add(measurement);
-                  resetIdleTimer(); // Reset timer on receiving data
-                  
-                  // Auto-save valid measurements globally (BP handled separately)
-                  if (measurement.isValid && _autoSaveEnabled && measurement.category != 'BP_SYS' && measurement.category != 'BP_DIA') {
-                    _autoSaveMeasurement(measurement);
-                  }
-                }
-              }
-            });
+        final serviceUuid = service.uuid.toString().toLowerCase();
+        final isNusService = serviceUuid == _nusServiceUuid;
+        for (BluetoothCharacteristic characteristic
+            in service.characteristics) {
+          final charUuid = characteristic.uuid.toString().toLowerCase();
+
+          if (isNusService &&
+              charUuid == _nusTxCharUuid &&
+              (characteristic.properties.notify ||
+                  characteristic.properties.indicate)) {
+            notifyChar = characteristic;
+          }
+
+          if (isNusService &&
+              charUuid == _nusRxCharUuid &&
+              (characteristic.properties.write ||
+                  characteristic.properties.writeWithoutResponse)) {
+            writeChar = characteristic;
           }
         }
       }
+
+      // Fallback if canonical NUS UUIDs are not available.
+      if (notifyChar == null || writeChar == null) {
+        for (BluetoothService service in services) {
+          for (BluetoothCharacteristic characteristic
+              in service.characteristics) {
+            if (notifyChar == null &&
+                (characteristic.properties.notify ||
+                    characteristic.properties.indicate)) {
+              notifyChar = characteristic;
+            }
+            if (writeChar == null &&
+                (characteristic.properties.write ||
+                    characteristic.properties.writeWithoutResponse)) {
+              writeChar = characteristic;
+            }
+          }
+        }
+      }
+
+      _writeCharacteristic = writeChar;
+
+      if (notifyChar == null) {
+        throw Exception('No notifiable characteristic found');
+      }
+
+      await notifyChar.setNotifyValue(true);
+
+      _characteristicSubscription?.cancel();
+      _characteristicSubscription = notifyChar.lastValueStream.listen((value) {
+        if (value.isEmpty) return;
+
+        final data = _decodeData(value);
+        _dataController.add(data);
+
+        // Detect BP cuff text messages (Inflating.../Deflating...)
+        final lowerData = data.trim().toLowerCase();
+        if (lowerData.contains('inflating')) {
+          debugPrint('BLE Text: Inflating detected');
+          _lastInflating = DateTime.now();
+          _updateDeviceStatus(BleDeviceStatus.inflating);
+          resetIdleTimer();
+          return;
+        } else if (lowerData.contains('deflating')) {
+          debugPrint('BLE Text: Deflating detected');
+          _lastDeflating = DateTime.now();
+          _updateDeviceStatus(BleDeviceStatus.deflating);
+          resetIdleTimer();
+          return;
+        }
+
+        final List<BleMeasurement> parsedMeasurements = [];
+        final singleMeasurement = _parseMeasurement(value);
+        if (singleMeasurement != null) {
+          parsedMeasurements.add(singleMeasurement);
+        } else if (value.length > 4 && value.length % 4 == 0) {
+          // Some stacks can surface concatenated 4-byte frames.
+          for (int i = 0; i < value.length; i += 4) {
+            final chunk = value.sublist(i, i + 4);
+            final m = _parseMeasurement(chunk);
+            if (m != null) {
+              parsedMeasurements.add(m);
+            }
+          }
+        }
+
+        for (final measurement in parsedMeasurements) {
+          debugPrint(
+              'Emitting measurement to stream: ${measurement.category}, valid=${measurement.isValid}');
+          _measurementController.add(measurement);
+          resetIdleTimer();
+
+          // Auto-save valid measurements globally (BP handled separately)
+          if (measurement.isValid &&
+              _autoSaveEnabled &&
+              measurement.category != 'BP_SYS' &&
+              measurement.category != 'BP_DIA' &&
+              measurement.category != 'BP_MAP') {
+            _autoSaveMeasurement(measurement);
+          }
+        }
+      });
     } catch (e) {
       debugPrint('Service discovery error: $e');
     }
@@ -303,23 +404,25 @@ class BleService {
 
   // Parse measurement data from BLE device (based on ble_terminal.py)
   BleMeasurement? _parseMeasurement(List<int> data) {
-    String rawHex = data.map((b) => b.toRadixString(16).padLeft(2, '0').toUpperCase()).join(' ');
+    String rawHex = data
+        .map((b) => b.toRadixString(16).padLeft(2, '0').toUpperCase())
+        .join(' ');
     // Use print for visibility in all console types
-    debugPrint('ðŸ“¡ BLE Raw Data: $rawHex (length: ${data.length})');
-    
+    debugPrint('BLE Raw Data: $rawHex (length: ${data.length})');
+
     if (data.length == 4) {
       int bleType = data[0];
       int value = data[2] | (data[3] << 8);
-      
+
       String typeName;
       String category;
       bool isValid = false;
-      
+
       switch (bleType) {
         case 0x01:
           typeName = 'Temperature';
           category = 'Temperature';
-          // Valid range in Fahrenheit; supports x10 and x100 payloads.
+          // Relaxed validity so app does not drop legitimate probe values.
           isValid = _isValidTemperatureRaw(value);
           break;
         case 0x02:
@@ -339,14 +442,25 @@ class BleService {
           category = 'BP_DIA';
           isValid = value > 0 && value < 200;
           break;
+        case 0x05:
+          typeName = 'BP_MAP';
+          category = 'BP_MAP';
+          isValid = value > 0 && value < 250;
+          break;
+        case 0x06:
+          typeName = 'Pulse';
+          category = 'Pulse';
+          isValid = value >= 30 && value <= 240;
+          break;
         default:
           typeName = 'Unknown ($bleType)';
           category = 'Unknown';
-          debugPrint('ðŸ“¡ BLE Unknown type: $bleType, value: $value');
+          debugPrint('BLE Unknown type: $bleType, value: $value');
       }
-      
+
       if (isValid) {
-        debugPrint('âœ… BLE VALID: type=$bleType ($typeName), value=$value, formatted=${_formatValue(category, value)}');
+        debugPrint(
+            'BLE VALID: type=$bleType ($typeName), value=$value, formatted=${_formatValue(category, value)}');
         _lastValidMeasurement = DateTime.now();
         _updateDeviceStatus(BleDeviceStatus.measuring);
 
@@ -359,19 +473,25 @@ class BleService {
         }
         _checkAndSaveCombinedBP();
       } else if (bleType == 0x02 && value == 1000) {
-        debugPrint('ðŸ“¡ BLE STATE: No Finger detected');
+        debugPrint('BLE STATE: No Finger detected');
         _lastNoFinger = DateTime.now();
         _updateDeviceStatus(BleDeviceStatus.noFinger);
-      } else if (bleType == 0x01 || bleType == 0x02 || bleType == 0x03 || bleType == 0x04) {
+      } else if (bleType == 0x01 ||
+          bleType == 0x02 ||
+          bleType == 0x03 ||
+          bleType == 0x04 ||
+          bleType == 0x05 ||
+          bleType == 0x06) {
         // Known type but invalid value (not 1000)
-        debugPrint('âŒ BLE INVALID (out of range): type=$bleType ($typeName), value=$value');
+        debugPrint(
+            'BLE INVALID (out of range): type=$bleType ($typeName), value=$value');
         _updateDeviceStatus(BleDeviceStatus.idle);
       } else {
         // Unknown or diagnostic packet - don't change global status to avoid flickering
-        debugPrint('ðŸ“¡ BLE INFO: type=$bleType, value=$value');
+        debugPrint('BLE INFO: type=$bleType, value=$value');
       }
       resetIdleTimer(); // Reset timer on any received characteristic value
-      
+
       return BleMeasurement(
         type: bleType,
         typeName: typeName,
@@ -382,12 +502,12 @@ class BleService {
         isValid: isValid,
       );
     }
-    
+
     // Try to parse other formats
-    debugPrint('ðŸ“¡ BLE Data not 4 bytes, trying alternative parsing...');
+    debugPrint('BLE data not 4 bytes, trying alternative parsing...');
     return null;
   }
-  
+
   void _checkAndSaveCombinedBP() {
     if (_pendingSysBP != null && _pendingDiaBP != null && _lastBPTime != null) {
       final now = DateTime.now();
@@ -410,32 +530,62 @@ class BleService {
         return '${(value / 100).toStringAsFixed(1)}%';
       case 'BP_SYS':
       case 'BP_DIA':
+      case 'BP_MAP':
         return '$value mmHg';
+      case 'Pulse':
+        return '$value bpm';
       default:
         return '$value';
     }
   }
 
   // Decode received data
-  String _decodeData(List<int> data) {
-    try {
-      return utf8.decode(data);
-    } catch (e) {
-      // If UTF-8 decoding fails, return hex representation
-      return data.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
+  bool _isLikelyTextPayload(List<int> data) {
+    if (data.isEmpty) return false;
+    int printable = 0;
+    for (final b in data) {
+      final isPrintableAscii = (b >= 32 && b <= 126);
+      final isWhitespace = b == 9 || b == 10 || b == 13;
+      if (isPrintableAscii || isWhitespace) {
+        printable++;
+      }
     }
+    return printable / data.length >= 0.85;
+  }
+
+  String _decodeData(List<int> data) {
+    if (_isLikelyTextPayload(data)) {
+      try {
+        return utf8.decode(data, allowMalformed: true);
+      } catch (_) {
+        // Fall through to hex.
+      }
+    }
+    return data.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
   }
 
   // Write data to device
   Future<bool> writeData(String data) async {
     if (_connectedDevice == null) return false;
-    
+
     try {
-      List<BluetoothService> services = await _connectedDevice!.discoverServices();
-      
+      if (_writeCharacteristic != null) {
+        final withoutResponse =
+            _writeCharacteristic!.properties.writeWithoutResponse &&
+                !_writeCharacteristic!.properties.write;
+        await _writeCharacteristic!
+            .write(utf8.encode(data), withoutResponse: withoutResponse);
+        return true;
+      }
+
+      List<BluetoothService> services =
+          await _connectedDevice!.discoverServices();
+
       for (BluetoothService service in services) {
-        for (BluetoothCharacteristic characteristic in service.characteristics) {
-          if (characteristic.properties.write || characteristic.properties.writeWithoutResponse) {
+        for (BluetoothCharacteristic characteristic
+            in service.characteristics) {
+          if (characteristic.properties.write ||
+              characteristic.properties.writeWithoutResponse) {
             await characteristic.write(utf8.encode(data));
             return true;
           }
@@ -454,6 +604,7 @@ class BleService {
       _characteristicSubscription?.cancel();
       await _connectedDevice?.disconnect();
       _connectedDevice = null;
+      _writeCharacteristic = null;
     } catch (e) {
       debugPrint('Disconnect error: $e');
     }
@@ -491,13 +642,13 @@ class BleService {
   // Try to auto-connect to saved device
   Future<bool> tryAutoConnect() async {
     if (!isAutoConnectEnabled()) return false;
-    
+
     final savedDevice = getSavedDevice();
     if (savedDevice == null) return false;
 
     // Scan briefly to find the saved device
     FlutterBluePlus.startScan(timeout: const Duration(seconds: 5));
-    
+
     await for (var results in FlutterBluePlus.scanResults) {
       for (var result in results) {
         if (result.device.remoteId.toString() == savedDevice['id']) {
@@ -506,33 +657,37 @@ class BleService {
         }
       }
     }
-    
+
     return false;
   }
 
   // Auto-save measurement to backend (global, works from any screen)
   Future<void> _autoSaveMeasurement(BleMeasurement measurement) async {
-    debugPrint('Global auto-save: ${measurement.category}, value=${measurement.value}');
-    
+    debugPrint(
+        'Global auto-save: ${measurement.category}, value=${measurement.value}');
+
     try {
       final now = DateTime.now();
       Map<String, dynamic> datas;
-      
+
       if (measurement.category == 'Temperature') {
-        // Store numeric value only (e.g., "98.6" not "98.6 Â°F")
-        final tempValue = _temperatureFahrenheitFromRaw(measurement.value).toStringAsFixed(2);
+        // Store numeric value only (e.g., "98.6" not "98.6 °F")
+        final tempValue =
+            _temperatureFahrenheitFromRaw(measurement.value).toStringAsFixed(2);
         datas = {"temperature": tempValue};
       } else if (measurement.category == 'SpO2') {
         // Store numeric value only (e.g., "92.1" not "92.1%")
         final spo2Value = (measurement.value / 100).toStringAsFixed(1);
         datas = {"spo2": spo2Value};
+      } else if (measurement.category == 'Pulse') {
+        datas = {"pulse_rate": measurement.value.toString()};
       } else {
         debugPrint('Unhandled category: ${measurement.category}');
         return;
       }
-      
+
       debugPrint('Sending to backend: $datas');
-      
+
       final data = {
         'date': DateFormat('dd-MM-yyyy').format(now),
         'time': DateFormat('hh:mm a').format(now),
@@ -541,23 +696,13 @@ class BleService {
         'comment': 'Auto-fetched from BLE device',
         'is_auto_fetched': true,
       };
-      
+
       final response = await _baseClient.post('measurements', data, true);
       debugPrint('Backend response: $response');
-      
+
       if (response['success'] == true) {
         // Notify listeners that a measurement was saved
         _measurementSavedController.add(measurement.category);
-        
-        Get.snackbar(
-          'Auto-Saved',
-          '${measurement.category}: ${measurement.getFormattedValue()}',
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.TOP,
-          duration: const Duration(seconds: 2),
-          icon: const Icon(Icons.bluetooth, color: Colors.white),
-        );
       } else {
         debugPrint('Auto-save failed: ${response['message']}');
       }
@@ -574,7 +719,7 @@ class BleService {
         "upper_bound": sys.toString(),
         "lower_bound": dia.toString()
       };
-      
+
       final data = {
         'date': DateFormat('dd-MM-yyyy').format(now),
         'time': DateFormat('hh:mm a').format(now),
@@ -583,21 +728,12 @@ class BleService {
         'comment': 'Auto-fetched from BLE device',
         'is_auto_fetched': true,
       };
-      
+
       final response = await _baseClient.post('measurements', data, true);
       debugPrint('Backend response (BP): $response');
-      
+
       if (response['success'] == true) {
         _measurementSavedController.add('BP');
-        Get.snackbar(
-          'Auto-Saved',
-          'Blood Pressure: $sys / $dia mmHg',
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.TOP,
-          duration: const Duration(seconds: 2),
-          icon: const Icon(Icons.favorite, color: Colors.white),
-        );
       } else {
         debugPrint('Auto-save BP failed: ${response['message']}');
       }
@@ -617,6 +753,3 @@ class BleService {
     _measurementSavedController.close();
   }
 }
-
-
-

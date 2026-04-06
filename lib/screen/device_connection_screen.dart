@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,6 +6,9 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../services/ble_service.dart';
 import '../contstants/app_colors.dart';
+import '../screen/admin/admin_config_screen.dart';
+import '../screen/admin/admin_login_screen.dart';
+import '../services/admin_access_service.dart';
 import '../services/mqtt_service.dart';
 
 class DeviceConnectionScreen extends StatefulWidget {
@@ -23,7 +26,8 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
   bool _isScanning = false;
   bool _isConnecting = false;
   BluetoothDevice? _connectedDevice;
-  BluetoothConnectionState _connectionState = BluetoothConnectionState.disconnected;
+  BluetoothConnectionState _connectionState =
+      BluetoothConnectionState.disconnected;
   BleDeviceStatus _deviceStatus = BleDeviceStatus.disconnected;
   final List<String> _receivedData = [];
   Map<String, String>? _savedDevice;
@@ -34,6 +38,8 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
   StreamSubscription<BleMeasurement>? _measurementSubscription;
   StreamSubscription<BluetoothConnectionState>? _connectionSubscription;
   StreamSubscription<BleDeviceStatus>? _statusSubscription;
+  Timer? _adminTapResetTimer;
+  int _adminTapCount = 0;
 
   // Auto-save state (controlled by BleService globally)
   final List<BleMeasurement> _recentMeasurements = [];
@@ -56,7 +62,7 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
   void _initializeCurrentState() {
     // Get current device status
     _deviceStatus = _bleService.deviceStatus;
-    
+
     final device = _bleService.connectedDevice;
     if (device != null) {
       _connectedDevice = device;
@@ -81,15 +87,18 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
     _dataSubscription = _bleService.dataStream.listen((data) {
       if (mounted) {
         setState(() {
-          _receivedData.insert(0, '${DateTime.now().toLocal().toString().substring(11, 19)}: $data');
+          _receivedData.insert(0,
+              '${DateTime.now().toLocal().toString().substring(11, 19)}: $data');
           if (_receivedData.length > 100) _receivedData.removeLast();
         });
       }
     });
 
     // Listen for parsed measurements (auto-save handled globally by BleService)
-    _measurementSubscription = _bleService.measurementStream.listen((measurement) {
-      debugPrint('Measurement received in screen: ${measurement.category}, valid=${measurement.isValid}');
+    _measurementSubscription =
+        _bleService.measurementStream.listen((measurement) {
+      debugPrint(
+          'Measurement received in screen: ${measurement.category}, valid=${measurement.isValid}');
       if (mounted) {
         setState(() {
           _recentMeasurements.insert(0, measurement);
@@ -128,17 +137,17 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
         return;
       }
     }
-    
+
     if (_bleService.isAutoConnectEnabled() && _savedDevice != null) {
       // Small delay to let UI build first
       await Future.delayed(const Duration(milliseconds: 500));
-      
+
       if (!mounted) return;
-      
+
       final hasPermissions = await _requestPermissions();
       if (hasPermissions) {
         setState(() => _isConnecting = true);
-        
+
         // Show connecting message
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -162,12 +171,12 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
             ),
           );
         }
-        
+
         final connected = await _bleService.tryAutoConnect();
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          
+
           setState(() {
             _isConnecting = false;
             if (connected) {
@@ -175,13 +184,14 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
               _connectionState = BluetoothConnectionState.connected;
             }
           });
-          
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(connected 
-                  ? 'Connected to ${_savedDevice?['name']}' 
+              content: Text(connected
+                  ? 'Connected to ${_savedDevice?['name']}'
                   : 'Could not connect. Tap Reconnect to try again.'),
-              backgroundColor: connected ? AppColors.primaryColor : Colors.orange,
+              backgroundColor:
+                  connected ? AppColors.primaryColor : Colors.orange,
               duration: Duration(seconds: 2),
             ),
           );
@@ -194,7 +204,9 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
     final bluetoothScan = await Permission.bluetoothScan.request();
     final bluetoothConnect = await Permission.bluetoothConnect.request();
     final location = await Permission.locationWhenInUse.request();
-    return bluetoothScan.isGranted && bluetoothConnect.isGranted && location.isGranted;
+    return bluetoothScan.isGranted &&
+        bluetoothConnect.isGranted &&
+        location.isGranted;
   }
 
   Future<void> _startScan() async {
@@ -216,18 +228,19 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
       _scanResults = [];
     });
 
-    _scanSubscription = _bleService.scanForDevices(timeout: const Duration(seconds: 10)).listen((results) {
+    _scanSubscription = _bleService
+        .scanForDevices(timeout: const Duration(seconds: 10))
+        .listen((results) {
       if (mounted) {
         setState(() {
           // Show devices starting with "NC", "BP", or "SP"
-          _scanResults = results.where((r) =>
-            r.device.platformName.isNotEmpty &&
-            (
-              r.device.platformName.startsWith('NC') ||
-              r.device.platformName.startsWith('BP') ||
-              r.device.platformName.startsWith('SP')
-            )
-          ).toList();
+          _scanResults = results
+              .where((r) =>
+                  r.device.platformName.isNotEmpty &&
+                  (r.device.platformName.startsWith('NC') ||
+                      r.device.platformName.startsWith('BP') ||
+                      r.device.platformName.startsWith('SP')))
+              .toList();
         });
       }
     });
@@ -250,9 +263,9 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
 
   Future<void> _connectToDevice(BluetoothDevice device) async {
     setState(() => _isConnecting = true);
-    
+
     final connected = await _bleService.connectToDevice(device);
-    
+
     if (mounted) {
       setState(() {
         _isConnecting = false;
@@ -264,8 +277,11 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(connected ? 'Connected to ${device.platformName}' : 'Failed to connect'),
-          backgroundColor: connected ? AppColors.primaryColor : Colors.red.shade400,
+          content: Text(connected
+              ? 'Connected to ${device.platformName}'
+              : 'Failed to connect'),
+          backgroundColor:
+              connected ? AppColors.primaryColor : Colors.red.shade400,
         ),
       );
     }
@@ -285,7 +301,10 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
     await _bleService.saveDevice(device);
     if (mounted) {
       setState(() {
-        _savedDevice = {'id': device.remoteId.toString(), 'name': device.platformName};
+        _savedDevice = {
+          'id': device.remoteId.toString(),
+          'name': device.platformName
+        };
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -313,7 +332,7 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
 
   Future<void> _reconnectToSavedDevice() async {
     if (_savedDevice == null) return;
-    
+
     final hasPermissions = await _requestPermissions();
     if (!hasPermissions) {
       if (mounted) {
@@ -328,9 +347,9 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
     }
 
     setState(() => _isConnecting = true);
-    
+
     final connected = await _bleService.tryAutoConnect();
-    
+
     if (mounted) {
       setState(() {
         _isConnecting = false;
@@ -339,15 +358,55 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
           _connectionState = BluetoothConnectionState.connected;
         }
       });
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(connected 
-              ? 'Connected to ${_savedDevice?['name']}' 
+          content: Text(connected
+              ? 'Connected to ${_savedDevice?['name']}'
               : 'Device not found. Make sure it\'s nearby and powered on.'),
           backgroundColor: connected ? AppColors.primaryColor : Colors.orange,
         ),
       );
+    }
+  }
+
+  Future<void> _openHiddenAdminAccess() async {
+    final connectedDevice = _bleService.connectedDevice;
+    if (connectedDevice == null ||
+        _connectionState != BluetoothConnectionState.connected) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text(
+            'Connect a BLE device before opening admin controls.',
+          ),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final hasSession = AdminAccessService()
+        .isSessionActiveFor(connectedDevice.remoteId.toString());
+
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            hasSession ? const AdminConfigScreen() : const AdminLoginScreen(),
+      ),
+    );
+  }
+
+  void _handleHiddenAdminTap() {
+    _adminTapCount += 1;
+    _adminTapResetTimer?.cancel();
+    _adminTapResetTimer = Timer(const Duration(seconds: 4), () {
+      _adminTapCount = 0;
+    });
+
+    if (_adminTapCount >= 6) {
+      _adminTapCount = 0;
+      _adminTapResetTimer?.cancel();
+      _openHiddenAdminAccess();
     }
   }
 
@@ -358,6 +417,7 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
     _measurementSubscription?.cancel();
     _connectionSubscription?.cancel();
     _statusSubscription?.cancel();
+    _adminTapResetTimer?.cancel();
     super.dispose();
   }
 
@@ -376,12 +436,16 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
           icon: Icon(Icons.arrow_back_ios, color: AppColors.darkGreyTextColor),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          "Device Connections",
-          style: TextStyle(
-            fontSize: 20.sp,
-            fontWeight: FontWeight.bold,
-            color: AppColors.darkGreyTextColor,
+        title: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _handleHiddenAdminTap,
+          child: Text(
+            "Device Connections",
+            style: TextStyle(
+              fontSize: 20.sp,
+              fontWeight: FontWeight.bold,
+              color: AppColors.darkGreyTextColor,
+            ),
           ),
         ),
         backgroundColor: AppColors.whitebgColor,
@@ -393,7 +457,7 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
             children: [
               // Connection Status Card
               _buildConnectionStatusCard(),
-              
+
               // Saved Device Card
               if (_savedDevice != null) _buildSavedDeviceCard(),
 
@@ -416,14 +480,14 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
 
   Widget _buildConnectionStatusCard() {
     final isConnected = _connectionState == BluetoothConnectionState.connected;
-    final isSaved = _savedDevice != null && 
+    final isSaved = _savedDevice != null &&
         _connectedDevice?.remoteId.toString() == _savedDevice?['id'];
-    
+
     return Container(
       margin: EdgeInsets.all(15.r),
       padding: EdgeInsets.all(16.r),
       decoration: BoxDecoration(
-        gradient: isConnected 
+        gradient: isConnected
             ? AppColors.primaryLinearGradient
             : LinearGradient(
                 colors: [Colors.grey.shade100, Colors.grey.shade200],
@@ -433,7 +497,8 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
         borderRadius: BorderRadius.circular(20.r),
         boxShadow: [
           BoxShadow(
-            color: (isConnected ? AppColors.primaryColor : Colors.grey).withValues(alpha: 0.2),
+            color: (isConnected ? AppColors.primaryColor : Colors.grey)
+                .withValues(alpha: 0.2),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -446,11 +511,14 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
               Container(
                 padding: EdgeInsets.all(12.r),
                 decoration: BoxDecoration(
-                  color: (isConnected ? AppColors.primaryColor : Colors.grey).withValues(alpha: 0.15),
+                  color: (isConnected ? AppColors.primaryColor : Colors.grey)
+                      .withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(15.r),
                 ),
                 child: Icon(
-                  isConnected ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
+                  isConnected
+                      ? Icons.bluetooth_connected
+                      : Icons.bluetooth_disabled,
                   size: 32.r,
                   color: isConnected ? AppColors.primaryColor : Colors.grey,
                 ),
@@ -465,12 +533,14 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
                       style: TextStyle(
                         fontSize: 18.sp,
                         fontWeight: FontWeight.bold,
-                        color: isConnected ? AppColors.selectedIconColor : AppColors.darkGreyTextColor,
+                        color: isConnected
+                            ? AppColors.selectedIconColor
+                            : AppColors.darkGreyTextColor,
                       ),
                     ),
                     SizedBox(height: 4.h),
                     Text(
-                      isConnected 
+                      isConnected
                           ? _connectedDevice?.platformName ?? "Unknown Device"
                           : "Scan to find devices",
                       style: TextStyle(
@@ -493,7 +563,7 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
             ],
           ),
           // Remember Device Toggle - Only show when connected
-          if (isConnected) ...[  
+          if (isConnected) ...[
             SizedBox(height: 12.h),
             Container(
               padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
@@ -505,7 +575,9 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
                 children: [
                   Icon(
                     isSaved ? Icons.bookmark : Icons.bookmark_outline,
-                    color: isSaved ? Colors.blue.shade600 : AppColors.greyTextColor,
+                    color: isSaved
+                        ? Colors.blue.shade600
+                        : AppColors.greyTextColor,
                     size: 22.r,
                   ),
                   SizedBox(width: 10.w),
@@ -522,7 +594,9 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
                           ),
                         ),
                         Text(
-                          isSaved ? "Auto-connect enabled" : "Connect automatically next time",
+                          isSaved
+                              ? "Auto-connect enabled"
+                              : "Connect automatically next time",
                           style: TextStyle(
                             fontSize: 11.sp,
                             color: AppColors.greyTextColor,
@@ -541,7 +615,8 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
                       }
                     },
                     activeThumbColor: AppColors.primaryColor,
-                    activeTrackColor: AppColors.primaryColor.withValues(alpha: 0.4),
+                    activeTrackColor:
+                        AppColors.primaryColor.withValues(alpha: 0.4),
                   ),
                 ],
               ),
@@ -557,8 +632,12 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
               child: Row(
                 children: [
                   Icon(
-                    _bleService.isAutoSaveEnabled ? Icons.cloud_upload : Icons.cloud_off,
-                    color: _bleService.isAutoSaveEnabled ? Colors.green.shade600 : AppColors.greyTextColor,
+                    _bleService.isAutoSaveEnabled
+                        ? Icons.cloud_upload
+                        : Icons.cloud_off,
+                    color: _bleService.isAutoSaveEnabled
+                        ? Colors.green.shade600
+                        : AppColors.greyTextColor,
                     size: 22.r,
                   ),
                   SizedBox(width: 10.w),
@@ -575,7 +654,9 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
                           ),
                         ),
                         Text(
-                          _bleService.isAutoSaveEnabled ? "Saving to Daily Measurements" : "Manual save only",
+                          _bleService.isAutoSaveEnabled
+                              ? "Saving to Daily Measurements"
+                              : "Manual save only",
                           style: TextStyle(
                             fontSize: 11.sp,
                             color: AppColors.greyTextColor,
@@ -614,14 +695,17 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
                       shape: BoxShape.circle,
                       color: _deviceStatus == BleDeviceStatus.measuring
                           ? Colors.green
-                          : (_deviceStatus == BleDeviceStatus.idle || _deviceStatus == BleDeviceStatus.noFinger)
+                          : (_deviceStatus == BleDeviceStatus.idle ||
+                                  _deviceStatus == BleDeviceStatus.noFinger)
                               ? Colors.orange
                               : Colors.grey,
                       boxShadow: [
                         BoxShadow(
                           color: (_deviceStatus == BleDeviceStatus.measuring
                                   ? Colors.green
-                                  : (_deviceStatus == BleDeviceStatus.idle || _deviceStatus == BleDeviceStatus.noFinger)
+                                  : (_deviceStatus == BleDeviceStatus.idle ||
+                                          _deviceStatus ==
+                                              BleDeviceStatus.noFinger)
                                       ? Colors.orange
                                       : Colors.grey)
                               .withValues(alpha: 0.5),
@@ -656,7 +740,9 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
                             fontSize: 11.sp,
                             color: _deviceStatus == BleDeviceStatus.measuring
                                 ? Colors.green.shade700
-                                : (_deviceStatus == BleDeviceStatus.idle || _deviceStatus == BleDeviceStatus.noFinger)
+                                : (_deviceStatus == BleDeviceStatus.idle ||
+                                        _deviceStatus ==
+                                            BleDeviceStatus.noFinger)
                                     ? Colors.orange.shade700
                                     : AppColors.greyTextColor,
                           ),
@@ -674,7 +760,8 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
                                 : Icons.hourglass_empty,
                     color: _deviceStatus == BleDeviceStatus.measuring
                         ? Colors.green
-                        : (_deviceStatus == BleDeviceStatus.idle || _deviceStatus == BleDeviceStatus.noFinger)
+                        : (_deviceStatus == BleDeviceStatus.idle ||
+                                _deviceStatus == BleDeviceStatus.noFinger)
                             ? Colors.orange
                             : Colors.grey,
                     size: 24.r,
@@ -689,12 +776,13 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
   }
 
   Widget _buildSavedDeviceCard() {
-    final isCurrentDevice = _connectedDevice?.remoteId.toString() == _savedDevice?['id'];
+    final isCurrentDevice =
+        _connectedDevice?.remoteId.toString() == _savedDevice?['id'];
     final isConnected = _connectionState == BluetoothConnectionState.connected;
-    
+
     // Don't show separate saved device card if connected to saved device (shown in status card)
     if (isConnected && isCurrentDevice) return const SizedBox.shrink();
-    
+
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 15.w, vertical: 5.h),
       padding: EdgeInsets.all(16.r),
@@ -722,7 +810,9 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
               Container(
                 padding: EdgeInsets.all(10.r),
                 decoration: BoxDecoration(
-                  color: _isConnecting ? AppColors.primaryColor.withValues(alpha: 0.2) : Colors.blue.shade100,
+                  color: _isConnecting
+                      ? AppColors.primaryColor.withValues(alpha: 0.2)
+                      : Colors.blue.shade100,
                   borderRadius: BorderRadius.circular(12.r),
                 ),
                 child: _isConnecting
@@ -731,10 +821,12 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
                         height: 24.r,
                         child: CircularProgressIndicator(
                           strokeWidth: 2.5,
-                          valueColor: AlwaysStoppedAnimation(AppColors.primaryColor),
+                          valueColor:
+                              AlwaysStoppedAnimation(AppColors.primaryColor),
                         ),
                       )
-                    : Icon(Icons.bookmark, color: Colors.blue.shade600, size: 24.r),
+                    : Icon(Icons.bookmark,
+                        color: Colors.blue.shade600, size: 24.r),
               ),
               SizedBox(width: 12.w),
               Expanded(
@@ -747,15 +839,20 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
                           _isConnecting ? "Connecting..." : "Saved Device",
                           style: TextStyle(
                             fontSize: 12.sp,
-                            color: _isConnecting ? AppColors.primaryColor : Colors.blue.shade600,
+                            color: _isConnecting
+                                ? AppColors.primaryColor
+                                : Colors.blue.shade600,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                         SizedBox(width: 8.w),
                         Container(
-                          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 6.w, vertical: 2.h),
                           decoration: BoxDecoration(
-                            color: _isConnecting ? AppColors.primaryColor : Colors.blue.shade600,
+                            color: _isConnecting
+                                ? AppColors.primaryColor
+                                : Colors.blue.shade600,
                             borderRadius: BorderRadius.circular(6.r),
                           ),
                           child: Text(
@@ -792,7 +889,8 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
                   onTap: _isConnecting ? null : _reconnectToSavedDevice,
                   borderRadius: BorderRadius.circular(8.r),
                   child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
                     decoration: BoxDecoration(
                       color: AppColors.primaryColor,
                       borderRadius: BorderRadius.circular(8.r),
@@ -810,7 +908,8 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
                             ),
                           )
                         else
-                          Icon(Icons.bluetooth_searching, color: Colors.white, size: 16.r),
+                          Icon(Icons.bluetooth_searching,
+                              color: Colors.white, size: 16.r),
                         SizedBox(width: 6.w),
                         Text(
                           _isConnecting ? "Connecting..." : "Reconnect",
@@ -831,7 +930,8 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
                 onTap: _removeSavedDevice,
                 borderRadius: BorderRadius.circular(8.r),
                 child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
                   decoration: BoxDecoration(
                     color: Colors.red.shade50,
                     borderRadius: BorderRadius.circular(8.r),
@@ -840,7 +940,8 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.link_off, color: Colors.red.shade400, size: 14.r),
+                      Icon(Icons.link_off,
+                          color: Colors.red.shade400, size: 14.r),
                       SizedBox(width: 4.w),
                       Text(
                         "Forget",
@@ -885,7 +986,8 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
           decoration: BoxDecoration(
             gradient: AppColors.primaryLinearGradient,
             borderRadius: BorderRadius.circular(15.r),
-            border: Border.all(color: AppColors.primaryColor.withValues(alpha: 0.3), width: 1),
+            border: Border.all(
+                color: AppColors.primaryColor.withValues(alpha: 0.3), width: 1),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -900,10 +1002,13 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
                   ),
                 )
               else
-                Icon(Icons.bluetooth_searching, color: AppColors.primaryColor, size: 24.r),
+                Icon(Icons.bluetooth_searching,
+                    color: AppColors.primaryColor, size: 24.r),
               SizedBox(width: 12.w),
               Text(
-                _isScanning ? "Scanning... Tap to stop" : "Scan for BLE Devices",
+                _isScanning
+                    ? "Scanning... Tap to stop"
+                    : "Scan for BLE Devices",
                 style: TextStyle(
                   fontSize: 16.sp,
                   fontWeight: FontWeight.w600,
@@ -985,10 +1090,13 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
         return Container(
           margin: EdgeInsets.only(bottom: 10.h),
           decoration: BoxDecoration(
-            color: isConnected ? AppColors.primaryColor.withValues(alpha: 0.1) : Colors.white,
+            color: isConnected
+                ? AppColors.primaryColor.withValues(alpha: 0.1)
+                : Colors.white,
             borderRadius: BorderRadius.circular(15.r),
             border: Border.all(
-              color: isConnected ? AppColors.primaryColor : Colors.grey.shade300,
+              color:
+                  isConnected ? AppColors.primaryColor : Colors.grey.shade300,
               width: isConnected ? 2 : 1,
             ),
             boxShadow: [
@@ -1000,18 +1108,20 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
             ],
           ),
           child: ListTile(
-            contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+            contentPadding:
+                EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
             leading: Container(
               padding: EdgeInsets.all(10.r),
               decoration: BoxDecoration(
-                color: isConnected 
+                color: isConnected
                     ? AppColors.primaryColor.withValues(alpha: 0.2)
                     : Colors.grey.shade100,
                 borderRadius: BorderRadius.circular(12.r),
               ),
               child: Icon(
                 Icons.bluetooth,
-                color: isConnected ? AppColors.primaryColor : Colors.grey.shade600,
+                color:
+                    isConnected ? AppColors.primaryColor : Colors.grey.shade600,
                 size: 24.r,
               ),
             ),
@@ -1019,7 +1129,9 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    device.platformName.isNotEmpty ? device.platformName : "Unknown Device",
+                    device.platformName.isNotEmpty
+                        ? device.platformName
+                        : "Unknown Device",
                     style: TextStyle(
                       fontSize: 15.sp,
                       fontWeight: FontWeight.w600,
@@ -1045,7 +1157,8 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
                 SizedBox(height: 2.h),
                 Row(
                   children: [
-                    Icon(Icons.signal_cellular_alt, size: 12.r, color: AppColors.greyTextColor),
+                    Icon(Icons.signal_cellular_alt,
+                        size: 12.r, color: AppColors.greyTextColor),
                     SizedBox(width: 4.w),
                     Text(
                       "RSSI: ${result.rssi} dBm",
@@ -1060,16 +1173,20 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
             ),
             trailing: Container(
               decoration: BoxDecoration(
-                color: isConnected ? Colors.red.shade50 : AppColors.primaryColor,
+                color:
+                    isConnected ? Colors.red.shade50 : AppColors.primaryColor,
                 borderRadius: BorderRadius.circular(10.r),
               ),
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: isConnected ? _disconnectDevice : () => _connectToDevice(device),
+                  onTap: isConnected
+                      ? _disconnectDevice
+                      : () => _connectToDevice(device),
                   borderRadius: BorderRadius.circular(10.r),
                   child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
                     child: Text(
                       isConnected ? "Disconnect" : "Connect",
                       style: TextStyle(
@@ -1108,7 +1225,9 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
             Container(
               padding: EdgeInsets.all(12.r),
               decoration: BoxDecoration(
-                color: mqtt.isConnected ? Colors.green.withValues(alpha: 0.15) : Colors.red.withValues(alpha: 0.15),
+                color: mqtt.isConnected
+                    ? Colors.green.withValues(alpha: 0.15)
+                    : Colors.red.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(15.r),
               ),
               child: Icon(
@@ -1127,7 +1246,9 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
                     style: TextStyle(
                       fontSize: 16.sp,
                       fontWeight: FontWeight.bold,
-                      color: mqtt.isConnected ? Colors.green.shade700 : Colors.red.shade700,
+                      color: mqtt.isConnected
+                          ? Colors.green.shade700
+                          : Colors.red.shade700,
                     ),
                   ),
                   SizedBox(height: 4.h),
@@ -1135,7 +1256,9 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
                     mqtt.isConnected ? "Connected to broker" : "Connecting...",
                     style: TextStyle(
                       fontSize: 12.sp,
-                      color: mqtt.isConnected ? Colors.green.shade400 : Colors.red.shade400,
+                      color: mqtt.isConnected
+                          ? Colors.green.shade400
+                          : Colors.red.shade400,
                     ),
                   ),
                   SizedBox(height: 4.h),
@@ -1145,7 +1268,11 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
                   ),
                   Text(
                     "Queue: ${mqtt.queueLength}",
-                    style: TextStyle(fontSize: 11.sp, color: mqtt.queueLength > 0 ? Colors.orange : Colors.black45),
+                    style: TextStyle(
+                        fontSize: 11.sp,
+                        color: mqtt.queueLength > 0
+                            ? Colors.orange
+                            : Colors.black45),
                   ),
                   if (mqtt.errorMessage != null)
                     Text(
@@ -1195,38 +1322,42 @@ class _DeviceConnectionScreenState extends State<DeviceConnectionScreen> {
           children: [
             Text(
               "Last 5 MQTT Sent Messages:",
-              style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold, color: Colors.blue.shade700),
+              style: TextStyle(
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue.shade700),
             ),
             SizedBox(height: 8.h),
             ...lastSent.map((msg) => Padding(
-              padding: EdgeInsets.only(bottom: 8.h),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.send, color: Colors.blue.shade400, size: 18.r),
-                  SizedBox(width: 8.w),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "${msg['deviceName'] ?? '-'} | ${msg['vitalType'] ?? '-'}: ${msg['value'] ?? '-'}",
-                          style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w500),
+                  padding: EdgeInsets.only(bottom: 8.h),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.send, color: Colors.blue.shade400, size: 18.r),
+                      SizedBox(width: 8.w),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "${msg['deviceName'] ?? '-'} | ${msg['vitalType'] ?? '-'}: ${msg['value'] ?? '-'}",
+                              style: TextStyle(
+                                  fontSize: 13.sp, fontWeight: FontWeight.w500),
+                            ),
+                            Text(
+                              "Sent: ${msg['sentAt'] != null ? DateTime.tryParse(msg['sentAt'])?.toLocal().toString().substring(0, 19) ?? msg['sentAt'] : '-'}",
+                              style: TextStyle(
+                                  fontSize: 11.sp, color: Colors.black54),
+                            ),
+                          ],
                         ),
-                        Text(
-                          "Sent: ${msg['sentAt'] != null ? DateTime.tryParse(msg['sentAt'])?.toLocal().toString().substring(0, 19) ?? msg['sentAt'] : '-'}",
-                          style: TextStyle(fontSize: 11.sp, color: Colors.black54),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            )),
+                )),
           ],
         ),
       ),
     );
   }
 }
-

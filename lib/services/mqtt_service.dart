@@ -7,13 +7,17 @@ import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
 
 /// MQTT Service for receiving vital data from hardware devices
-/// 
+///
 /// This service connects to the MQTT broker and listens for telemetry
 /// data published by BLE gateway devices.
 class MqttService extends ChangeNotifier {
-    // Track last 5 successful sent messages
-    final List<Map<String, dynamic>> _lastSentMessages = [];
-    List<Map<String, dynamic>> get lastSentMessages => List.unmodifiable(_lastSentMessages);
+  static const Duration _reconnectCheckInterval = Duration(seconds: 8);
+  static const Duration _staleConnectingTimeout = Duration(seconds: 35);
+
+  // Track last 5 successful sent messages
+  final List<Map<String, dynamic>> _lastSentMessages = [];
+  List<Map<String, dynamic>> get lastSentMessages =>
+      List.unmodifiable(_lastSentMessages);
   // Queue for unsent messages
   final List<Map<String, dynamic>> _publishQueue = [];
   DateTime? _lastSentTime;
@@ -23,15 +27,19 @@ class MqttService extends ChangeNotifier {
   // MQTT client and subscription
   MqttServerClient? _client;
   StreamSubscription<List<MqttReceivedMessage<MqttMessage>>>? _subscription;
+  Timer? _reconnectTimer;
 
   // MQTT connection state
 
   bool _isConnected = false;
   bool _isConnecting = false;
+  bool _shouldStayConnected = false;
+  DateTime? _connectingSince;
   String? _errorMessage;
 
   // Callbacks for vital data
-  final List<void Function(String deviceName, String vitalType, dynamic value)> _vitalCallbacks = [];
+  final List<void Function(String deviceName, String vitalType, dynamic value)>
+      _vitalCallbacks = [];
 
   // Latest received vitals
   final Map<String, Map<String, dynamic>> _latestVitals = {};
@@ -39,7 +47,81 @@ class MqttService extends ChangeNotifier {
   bool get isConnected => _isConnected;
   bool get isConnecting => _isConnecting;
   String? get errorMessage => _errorMessage;
-  Map<String, Map<String, dynamic>> get latestVitals => Map.unmodifiable(_latestVitals);
+  Map<String, Map<String, dynamic>> get latestVitals =>
+      Map.unmodifiable(_latestVitals);
+
+  bool get _isClientConnected =>
+      _client?.connectionStatus?.state == MqttConnectionState.connected;
+
+  Duration _connectingAge() {
+    final startedAt = _connectingSince;
+    if (startedAt == null) return Duration.zero;
+    return DateTime.now().difference(startedAt);
+  }
+
+  void _startReconnectMonitor() {
+    _reconnectTimer ??= Timer.periodic(_reconnectCheckInterval, (_) {
+      unawaited(_reconnectMonitorTick());
+    });
+  }
+
+  void _stopReconnectMonitor() {
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+  }
+
+  Future<void> _reconnectMonitorTick() async {
+    if (!_shouldStayConnected) return;
+
+    if (_isClientConnected) {
+      if (!_isConnected || _isConnecting) {
+        _isConnected = true;
+        _isConnecting = false;
+        _connectingSince = null;
+        _errorMessage = null;
+        notifyListeners();
+      }
+      if (_publishQueue.isNotEmpty) {
+        await flushQueue();
+      }
+      return;
+    }
+
+    if (_isConnecting && _connectingAge() < _staleConnectingTimeout) {
+      return;
+    }
+
+    if (_isConnecting && _connectingAge() >= _staleConnectingTimeout) {
+      _errorMessage = 'MQTT connect timed out, retrying...';
+      _isConnecting = false;
+      _connectingSince = null;
+      await _disposeClient();
+      notifyListeners();
+    }
+
+    await connect();
+  }
+
+  Future<void> _disposeClient() async {
+    await _subscription?.cancel();
+    _subscription = null;
+
+    final client = _client;
+    _client = null;
+    if (client == null) return;
+
+    // Avoid callback loops while force-resetting/rebuilding the client.
+    client.onDisconnected = null;
+    client.onConnected = null;
+    client.onAutoReconnect = null;
+    client.onAutoReconnected = null;
+
+    try {
+      client.disconnect();
+    } catch (_) {
+      // Ignore disconnect failures while resetting.
+    }
+  }
 
   /// Connect to MQTT broker
   Future<bool> connect({
@@ -49,9 +131,34 @@ class MqttService extends ChangeNotifier {
     String? username,
     String? password,
   }) async {
-    if (_isConnecting || _isConnected) return _isConnected;
+    _shouldStayConnected = true;
+    _startReconnectMonitor();
+
+    if (_isClientConnected) {
+      _isConnected = true;
+      _isConnecting = false;
+      _connectingSince = null;
+      _errorMessage = null;
+      if (_publishQueue.isNotEmpty) {
+        unawaited(flushQueue());
+      }
+      notifyListeners();
+      return true;
+    }
+
+    if (_isConnecting && _connectingAge() < _staleConnectingTimeout) {
+      return false;
+    }
+
+    if (_isConnecting && _connectingAge() >= _staleConnectingTimeout) {
+      await _disposeClient();
+      _isConnecting = false;
+      _connectingSince = null;
+    }
 
     _isConnecting = true;
+    _isConnected = false;
+    _connectingSince = DateTime.now();
     _errorMessage = null;
     notifyListeners();
 
@@ -62,6 +169,8 @@ class MqttService extends ChangeNotifier {
       final mqttUsernameValue = username ?? mqttUsername;
       final mqttPasswordValue = password ?? mqttPassword;
 
+      await _disposeClient();
+
       _client = MqttServerClient.withPort(
         brokerHost,
         mqttClientIdValue,
@@ -71,7 +180,9 @@ class MqttService extends ChangeNotifier {
       _client!.secure = false;
       _client!.logging(on: false);
       _client!.keepAlivePeriod = 20;
+      _client!.connectTimeoutPeriod = 8000;
       _client!.autoReconnect = true;
+      _client!.resubscribeOnAutoReconnect = true;
       _client!.onAutoReconnect = _onAutoReconnect;
       _client!.onAutoReconnected = _onAutoReconnected;
       _client!.onDisconnected = _onDisconnected;
@@ -84,31 +195,33 @@ class MqttService extends ChangeNotifier {
 
       await _client!.connect(mqttUsernameValue, mqttPasswordValue);
 
-      if (_client!.connectionStatus?.state != MqttConnectionState.connected) {
-        final returnCode = _client!.connectionStatus?.returnCode.toString() ?? 'unknown';
+      if (!_isClientConnected) {
+        final returnCode =
+            _client!.connectionStatus?.returnCode.toString() ?? 'unknown';
         _errorMessage = 'Connection failed: $returnCode';
         _isConnected = false;
-        _client?.disconnect();
-        _client = null;
+        _isConnecting = false;
+        _connectingSince = null;
+        await _disposeClient();
+        notifyListeners();
       } else {
-        _isConnected = true;
-        _subscribeToTelemetry();
+        _onConnected();
       }
     } catch (e) {
       _errorMessage = 'Connection error: $e';
       _isConnected = false;
-      _client?.disconnect();
-      _client = null;
+      _isConnecting = false;
+      _connectingSince = null;
+      await _disposeClient();
+      notifyListeners();
     }
 
-    _isConnecting = false;
-    notifyListeners();
     return _isConnected;
   }
 
   /// Subscribe to telemetry topic
   void _subscribeToTelemetry() {
-    if (_client == null) return;
+    if (!_isClientConnected || _client == null) return;
 
     _client!.subscribe(mqttTelemetryTopic, MqttQos.atLeastOnce);
 
@@ -181,14 +294,21 @@ class MqttService extends ChangeNotifier {
       'value': value,
       'timestamp': DateTime.now().toIso8601String(),
     };
-    if (!_isConnected || _client == null) {
+    if (!_isClientConnected || _client == null) {
+      _isConnected = false;
       _publishQueue.add(message);
+      if (_shouldStayConnected && !_isConnecting) {
+        unawaited(connect());
+      }
       notifyListeners();
       return false;
     }
     final sent = await _sendMqttMessage(message);
     if (!sent) {
       _publishQueue.add(message);
+      if (_shouldStayConnected && !_isConnecting) {
+        unawaited(connect());
+      }
       notifyListeners();
     }
     return sent;
@@ -196,6 +316,11 @@ class MqttService extends ChangeNotifier {
 
   // Internal: send a single message to MQTT
   Future<bool> _sendMqttMessage(Map<String, dynamic> message) async {
+    if (!_isClientConnected || _client == null) {
+      _isConnected = false;
+      return false;
+    }
+
     try {
       final payload = jsonEncode({
         message['deviceName']: [
@@ -210,6 +335,10 @@ class MqttService extends ChangeNotifier {
         builder.payload!,
       );
       _lastSentTime = DateTime.now();
+      _isConnected = true;
+      _isConnecting = false;
+      _connectingSince = null;
+      _errorMessage = null;
       // Track last 5 successful sent messages
       _lastSentMessages.add({
         ...message,
@@ -222,27 +351,34 @@ class MqttService extends ChangeNotifier {
       return true;
     } catch (e) {
       _errorMessage = 'Publish failed: $e';
+      _isConnected = false;
       return false;
     }
   }
 
   // Flush queued messages when connected
   Future<void> flushQueue() async {
-    if (!_isConnected || _client == null) return;
-    while (_publishQueue.isNotEmpty) {
-      final msg = _publishQueue.removeAt(0);
-      await _sendMqttMessage(msg);
+    if (!_isClientConnected || _client == null) return;
+    while (_publishQueue.isNotEmpty && _isClientConnected) {
+      final msg = _publishQueue.first;
+      final sent = await _sendMqttMessage(msg);
+      if (!sent) break;
+      _publishQueue.removeAt(0);
     }
-	  notifyListeners();
+    notifyListeners();
   }
 
   /// Register a callback for vital data
-  void addVitalCallback(void Function(String deviceName, String vitalType, dynamic value) callback) {
+  void addVitalCallback(
+      void Function(String deviceName, String vitalType, dynamic value)
+          callback) {
     _vitalCallbacks.add(callback);
   }
 
   /// Remove a vital callback
-  void removeVitalCallback(void Function(String deviceName, String vitalType, dynamic value) callback) {
+  void removeVitalCallback(
+      void Function(String deviceName, String vitalType, dynamic value)
+          callback) {
     _vitalCallbacks.remove(callback);
   }
 
@@ -256,37 +392,56 @@ class MqttService extends ChangeNotifier {
 
   /// Disconnect from MQTT broker
   void disconnect() {
-    _subscription?.cancel();
-    _subscription = null;
-    _client?.disconnect();
-    _client = null;
+    _shouldStayConnected = false;
+    _stopReconnectMonitor();
     _isConnected = false;
+    _isConnecting = false;
+    _connectingSince = null;
+    _errorMessage = null;
+    unawaited(_disposeClient());
     notifyListeners();
   }
 
   void _onConnected() {
+    if (!_shouldStayConnected) return;
+    _isConnecting = false;
     _isConnected = true;
-    flushQueue();
+    _connectingSince = null;
+    _errorMessage = null;
+    _subscribeToTelemetry();
+    if (_publishQueue.isNotEmpty) {
+      unawaited(flushQueue());
+    }
     notifyListeners();
   }
 
   void _onDisconnected() {
     _isConnected = false;
+    _isConnecting = false;
+    _connectingSince = null;
+    if (_shouldStayConnected) {
+      _startReconnectMonitor();
+      unawaited(_reconnectMonitorTick());
+    }
     notifyListeners();
   }
 
   void _onAutoReconnect() {
     _isConnecting = true;
-    // ...existing code...
+    _isConnected = false;
+    _connectingSince ??= DateTime.now();
     notifyListeners();
   }
 
   void _onAutoReconnected() {
     _isConnecting = false;
     _isConnected = true;
-    // ...existing code...
+    _connectingSince = null;
+    _errorMessage = null;
     _subscribeToTelemetry();
-    flushQueue();
+    if (_publishQueue.isNotEmpty) {
+      unawaited(flushQueue());
+    }
     notifyListeners();
   }
 

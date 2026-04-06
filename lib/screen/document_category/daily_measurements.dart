@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:docuhealth/components/image_preview_screen.dart';
@@ -27,11 +27,12 @@ class DailyMeasurements extends StatefulWidget {
 }
 
 class _DailyMeasurementsState extends State<DailyMeasurements> {
+  static const int _maxGraphPoints = 50;
   String selectedTimeFilter = "Daily";
   String selectedCategoryFilter = "BP";
   DateTime selectedDate = DateTime.now();
   DateTime focusedDay = DateTime.now();
-  
+
   // BLE auto-refresh
   final BleService _bleService = BleService();
   StreamSubscription<String>? _measurementSavedSubscription;
@@ -47,34 +48,38 @@ class _DailyMeasurementsState extends State<DailyMeasurements> {
       Provider.of<DailyMeasurementController>(context, listen: false)
           .getAnalyticsData(selectedTimeFilter, selectedCategoryFilter);
     });
-    
+
     // Listen for BLE auto-saved measurements
-    _measurementSavedSubscription = _bleService.measurementSavedStream.listen((category) {
-      debugPrint('Measurement saved notification: $category, current filter: $selectedCategoryFilter');
+    _measurementSavedSubscription =
+        _bleService.measurementSavedStream.listen((category) {
+      debugPrint(
+          'Measurement saved notification: $category, current filter: $selectedCategoryFilter');
       // Refresh if saved category matches current filter
       if (category == selectedCategoryFilter) {
         _refreshData();
       }
     });
   }
-  
+
   @override
   void dispose() {
     _measurementSavedSubscription?.cancel();
     super.dispose();
   }
-  
+
   // Refresh data from backend
   Future<void> _refreshData() async {
     if (_isRefreshing || !mounted) return;
-    
+
     setState(() => _isRefreshing = true);
     final controller =
         Provider.of<DailyMeasurementController>(context, listen: false);
-    
+
     try {
-      await controller.getMeasurementsData(selectedDate, selectedCategoryFilter);
-      await controller.getAnalyticsData(selectedTimeFilter, selectedCategoryFilter);
+      await controller.getMeasurementsData(
+          selectedDate, selectedCategoryFilter);
+      await controller.getAnalyticsData(
+          selectedTimeFilter, selectedCategoryFilter);
     } finally {
       if (mounted) {
         setState(() => _isRefreshing = false);
@@ -99,7 +104,8 @@ class _DailyMeasurementsState extends State<DailyMeasurements> {
 
   Widget _buildBpStatusBanner(BleDeviceStatus status) {
     final isInflating = status == BleDeviceStatus.inflating;
-    final accentColor = isInflating ? Colors.indigo.shade700 : Colors.teal.shade700;
+    final accentColor =
+        isInflating ? Colors.indigo.shade700 : Colors.teal.shade700;
 
     return Container(
       key: ValueKey(status),
@@ -144,10 +150,12 @@ class _DailyMeasurementsState extends State<DailyMeasurements> {
                         height: 18.w,
                         child: CircularProgressIndicator(
                           strokeWidth: 2.4,
-                          valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(accentColor),
                         ),
                       )
-                    : Icon(Icons.south_rounded, color: accentColor, size: 20.sp),
+                    : Icon(Icons.south_rounded,
+                        color: accentColor, size: 20.sp),
               ),
               SizedBox(width: 12.w),
               Expanded(
@@ -275,9 +283,28 @@ class _DailyMeasurementsState extends State<DailyMeasurements> {
     List<GraphData> graphValue = dailyMeasurementController.graphValue;
     List<GraphData> upperBond = dailyMeasurementController.upperBond;
     List<GraphData> lowerBond = dailyMeasurementController.lowerBond;
-    
-    debugPrint('BUILD: graphValue.length=${graphValue.length}, upperBond=${upperBond.length}, lowerBond=${lowerBond.length}');
-    debugPrint('BUILD: category=$selectedCategoryFilter, showing chart: ${!(graphValue.isEmpty && upperBond.isEmpty && lowerBond.isEmpty)}');
+    final List<GraphData> cappedGraphValue = graphValue.length > _maxGraphPoints
+        ? graphValue.sublist(graphValue.length - _maxGraphPoints)
+        : graphValue;
+    final List<GraphData> cappedUpperBond = upperBond.length > _maxGraphPoints
+        ? upperBond.sublist(upperBond.length - _maxGraphPoints)
+        : upperBond;
+    final List<GraphData> cappedLowerBond = lowerBond.length > _maxGraphPoints
+        ? lowerBond.sublist(lowerBond.length - _maxGraphPoints)
+        : lowerBond;
+    final int graphPointCount = selectedCategoryFilter == "BP"
+        ? (cappedUpperBond.length > cappedLowerBond.length
+            ? cappedUpperBond.length
+            : cappedLowerBond.length)
+        : cappedGraphValue.length;
+
+    debugPrint(
+        'BUILD: graphValue.length=${graphValue.length}, upperBond=${upperBond.length}, lowerBond=${lowerBond.length}');
+    debugPrint(
+        'BUILD: cappedGraphValue.length=${cappedGraphValue.length}, cappedUpperBond=${cappedUpperBond.length}, cappedLowerBond=${cappedLowerBond.length}');
+    debugPrint('BUILD: graphPointCount=$graphPointCount');
+    debugPrint(
+        'BUILD: category=$selectedCategoryFilter, showing chart: ${!(graphValue.isEmpty && upperBond.isEmpty && lowerBond.isEmpty)}');
 
     return Scaffold(
       appBar: AppBar(
@@ -310,14 +337,17 @@ class _DailyMeasurementsState extends State<DailyMeasurements> {
             builder: (context, snapshot) {
               final status = snapshot.data ?? BleDeviceStatus.disconnected;
               final isConnected = status != BleDeviceStatus.disconnected;
-              
+
               return IconButton(
                 icon: Icon(
-                  isConnected ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
+                  isConnected
+                      ? Icons.bluetooth_connected
+                      : Icons.bluetooth_disabled,
                   color: isConnected ? Colors.white : Colors.redAccent.shade100,
                   size: 24.r,
                 ),
-                tooltip: isConnected ? 'Device Connected' : 'Device Disconnected',
+                tooltip:
+                    isConnected ? 'Device Connected' : 'Device Disconnected',
                 onPressed: () {
                   Get.to(() => DeviceConnectionScreen());
                 },
@@ -435,11 +465,13 @@ class _DailyMeasurementsState extends State<DailyMeasurements> {
                 initialData: _bleService.deviceStatus,
                 builder: (context, snapshot) {
                   final status = snapshot.data;
-                  if (status == BleDeviceStatus.noFinger && selectedCategoryFilter == "SpO2") {
+                  if (status == BleDeviceStatus.noFinger &&
+                      selectedCategoryFilter == "SpO2") {
                     return Container(
                       width: double.infinity,
                       margin: EdgeInsets.all(10.r),
-                      padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
+                      padding: EdgeInsets.symmetric(
+                          vertical: 12.h, horizontal: 16.w),
                       decoration: BoxDecoration(
                         color: Colors.orange.shade50,
                         borderRadius: BorderRadius.circular(10.r),
@@ -447,7 +479,8 @@ class _DailyMeasurementsState extends State<DailyMeasurements> {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700),
+                          Icon(Icons.warning_amber_rounded,
+                              color: Colors.orange.shade700),
                           SizedBox(width: 12.w),
                           Expanded(
                             child: Text(
@@ -462,18 +495,23 @@ class _DailyMeasurementsState extends State<DailyMeasurements> {
                         ],
                       ),
                     );
-                  } else if ((status == BleDeviceStatus.inflating || status == BleDeviceStatus.deflating) && selectedCategoryFilter == "BP") {
+                  } else if ((status == BleDeviceStatus.inflating ||
+                          status == BleDeviceStatus.deflating) &&
+                      selectedCategoryFilter == "BP") {
                     return AnimatedSwitcher(
                       duration: const Duration(milliseconds: 250),
                       switchInCurve: Curves.easeOutCubic,
                       switchOutCurve: Curves.easeInCubic,
                       child: _buildBpStatusBanner(status!),
                     );
-                  } else if (status != BleDeviceStatus.disconnected && status != BleDeviceStatus.measuring && selectedCategoryFilter == "BP") {
+                  } else if (status != BleDeviceStatus.disconnected &&
+                      status != BleDeviceStatus.measuring &&
+                      selectedCategoryFilter == "BP") {
                     return Container(
                       width: double.infinity,
                       margin: EdgeInsets.all(10.r),
-                      padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
+                      padding: EdgeInsets.symmetric(
+                          vertical: 12.h, horizontal: 16.w),
                       decoration: BoxDecoration(
                         color: Colors.blue.shade50,
                         borderRadius: BorderRadius.circular(10.r),
@@ -496,11 +534,14 @@ class _DailyMeasurementsState extends State<DailyMeasurements> {
                         ],
                       ),
                     );
-                  } else if (status != BleDeviceStatus.disconnected && status != BleDeviceStatus.measuring && selectedCategoryFilter == "Temperature") {
+                  } else if (status != BleDeviceStatus.disconnected &&
+                      status != BleDeviceStatus.measuring &&
+                      selectedCategoryFilter == "Temperature") {
                     return Container(
                       width: double.infinity,
                       margin: EdgeInsets.all(10.r),
-                      padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
+                      padding: EdgeInsets.symmetric(
+                          vertical: 12.h, horizontal: 16.w),
                       decoration: BoxDecoration(
                         color: Colors.red.shade50,
                         borderRadius: BorderRadius.circular(10.r),
@@ -508,7 +549,8 @@ class _DailyMeasurementsState extends State<DailyMeasurements> {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.thermostat_outlined, color: Colors.red.shade700),
+                          Icon(Icons.thermostat_outlined,
+                              color: Colors.red.shade700),
                           SizedBox(width: 12.w),
                           Expanded(
                             child: Text(
@@ -527,7 +569,9 @@ class _DailyMeasurementsState extends State<DailyMeasurements> {
                   return const SizedBox.shrink();
                 },
               ),
-              graphValue.isEmpty && upperBond.isEmpty && lowerBond.isEmpty
+              cappedGraphValue.isEmpty &&
+                      cappedUpperBond.isEmpty &&
+                      cappedLowerBond.isEmpty
                   ? Container(
                       padding: EdgeInsets.all(16.r),
                       child: Text(
@@ -539,188 +583,194 @@ class _DailyMeasurementsState extends State<DailyMeasurements> {
                       padding: EdgeInsets.all(10.r),
                       child: Column(
                         children: [
-                          Text('Graph data: ${graphValue.length} points', style: TextStyle(fontSize: 10.sp, color: Colors.grey)),
+                          Text('Graph data: $graphPointCount points',
+                              style: TextStyle(
+                                  fontSize: 10.sp, color: Colors.grey)),
                           SizedBox(height: 5.h),
-                        _buildChart(
-                          selectedCategoryFilter,
-                          graphValue,
-                          upperBond,
-                          lowerBond,
+                          _buildChart(
+                            selectedCategoryFilter,
+                            cappedGraphValue,
+                            cappedUpperBond,
+                            cappedLowerBond,
+                          ),
+                        ],
+                      ),
+                    ),
+              Row(
+                children: [
+                  Container(
+                    width: 55.w,
+                    height: 65.h,
+                    margin: EdgeInsets.only(left: 5.w),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryColor,
+                      borderRadius: BorderRadius.circular(22.r),
+                    ),
+                    child: IconButton(
+                      onPressed: () async {
+                        await _selectDate(context);
+                      },
+                      icon: const Icon(
+                        Icons.calendar_month,
+                        color: Colors.white,
+                        size: 30,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: TableCalendar(
+                      firstDay: DateTime.utc(2010, 1, 1),
+                      lastDay: DateTime.now(),
+                      focusedDay: focusedDay,
+                      calendarFormat: CalendarFormat.week,
+                      availableCalendarFormats: const {
+                        CalendarFormat.week: 'Week',
+                      },
+                      headerStyle: const HeaderStyle(
+                        titleCentered: true,
+                        formatButtonVisible: false,
+                        leftChevronVisible: false,
+                        rightChevronVisible: false,
+                      ),
+                      selectedDayPredicate: (day) {
+                        return isSameDay(selectedDate, day);
+                      },
+                      calendarStyle: CalendarStyle(
+                        todayDecoration: BoxDecoration(
+                          color: AppColors.primaryColor.withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        selectedDecoration: BoxDecoration(
+                          color: AppColors.primaryColor,
+                          shape: BoxShape.circle,
+                        ),
+                        selectedTextStyle: TextStyle(
+                          color: AppColors.whiteTextColor,
+                        ),
+                      ),
+                      onDaySelected: (selected, focused) async {
+                        setState(() {
+                          selectedDate = selected;
+                          focusedDay = focused;
+                        });
+                        showDialog(
+                          context: context,
+                          builder: (context) => FutureProgressDialog(
+                            dailyMeasurementController.getMeasurementsData(
+                              selected,
+                              selectedCategoryFilter,
+                            ),
+                            message: const Text('Please wait...'),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(
+                height: 10.h,
+              ),
+              // Separate auto-fetched and manual entries
+              Builder(
+                builder: (context) {
+                  // Get auto-fetched entries
+                  final autoFetchedEntries = measurementData
+                      .where((m) => m.isAutoFetched == true)
+                      .toList();
+                  // Sort by date and time descending to get latest first
+                  autoFetchedEntries.sort((a, b) {
+                    final dateTimeA = _parseMeasurementDateTime(a);
+                    final dateTimeB = _parseMeasurementDateTime(b);
+                    return dateTimeB.compareTo(dateTimeA); // Descending order
+                  });
+
+                  // Get manual entries only
+                  final manualEntries = measurementData
+                      .where((m) => m.isAutoFetched != true)
+                      .toList();
+
+                  return Column(
+                    children: [
+                      // Auto-fetched BLE entries section (show only latest)
+                      if (autoFetchedEntries.isNotEmpty) ...[
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 12.w, vertical: 8.h),
+                          child: Row(
+                            children: [
+                              Icon(Icons.bluetooth,
+                                  size: 18.sp, color: Colors.teal),
+                              SizedBox(width: 6.w),
+                              Text(
+                                'BLE Auto-Fetched (Latest)',
+                                style: TextStyle(
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.darkGreyTextColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        _buildManualEntryCard(
+                          autoFetchedEntries.first,
+                          dailyMeasurementController,
+                          showDelete: false,
                         ),
                       ],
-                    ),
-                  ),
-            Row(
-              children: [
-                Container(
-                  width: 55.w,
-                  height: 65.h,
-                  margin: EdgeInsets.only(left: 5.w),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryColor,
-                    borderRadius: BorderRadius.circular(22.r),
-                  ),
-                  child: IconButton(
-                    onPressed: () async {
-                      await _selectDate(context);
-                    },
-                    icon: const Icon(
-                      Icons.calendar_month,
-                      color: Colors.white,
-                      size: 30,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: TableCalendar(
-                    firstDay: DateTime.utc(2010, 1, 1),
-                    lastDay: DateTime.now(),
-                    focusedDay: focusedDay,
-                    calendarFormat: CalendarFormat.week,
-                    availableCalendarFormats: const {
-                      CalendarFormat.week: 'Week',
-                    },
-                    headerStyle: const HeaderStyle(
-                      titleCentered: true,
-                      formatButtonVisible: false,
-                      leftChevronVisible: false,
-                      rightChevronVisible: false,
-                    ),
-                    selectedDayPredicate: (day) {
-                      return isSameDay(selectedDate, day);
-                    },
-                    calendarStyle: CalendarStyle(
-                      todayDecoration: BoxDecoration(
-                        color: AppColors.primaryColor.withValues(alpha: 0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      selectedDecoration: BoxDecoration(
-                        color: AppColors.primaryColor,
-                        shape: BoxShape.circle,
-                      ),
-                      selectedTextStyle: TextStyle(
-                        color: AppColors.whiteTextColor,
-                      ),
-                    ),
-                    onDaySelected: (selected, focused) async {
-                      setState(() {
-                        selectedDate = selected;
-                        focusedDay = focused;
-                      });
-                      showDialog(
-                        context: context,
-                        builder: (context) => FutureProgressDialog(
-                          dailyMeasurementController.getMeasurementsData(
-                            selected,
-                            selectedCategoryFilter,
-                          ),
-                          message: const Text('Please wait...'),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(
-              height: 10.h,
-            ),
-            // Separate auto-fetched and manual entries
-            Builder(
-              builder: (context) {
-                // Get auto-fetched entries
-                final autoFetchedEntries = measurementData
-                    .where((m) => m.isAutoFetched == true)
-                    .toList();
-                // Sort by date and time descending to get latest first
-                autoFetchedEntries.sort((a, b) {
-                  final dateTimeA = DateTime.tryParse('${a.date ?? ''} ${a.time ?? ''}') ?? DateTime(1970);
-                  final dateTimeB = DateTime.tryParse('${b.date ?? ''} ${b.time ?? ''}') ?? DateTime(1970);
-                  return dateTimeB.compareTo(dateTimeA); // Descending order
-                });
-                
-                // Get manual entries only
-                final manualEntries = measurementData
-                    .where((m) => m.isAutoFetched != true)
-                    .toList();
-                
-                return Column(
-                  children: [
-                    // Auto-fetched BLE entries section (show only latest)
-                    if (autoFetchedEntries.isNotEmpty) ...[
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-                        child: Row(
-                          children: [
-                            Icon(Icons.bluetooth, size: 18.sp, color: Colors.teal),
-                            SizedBox(width: 6.w),
-                            Text(
-                              'BLE Auto-Fetched (Latest)',
-                              style: TextStyle(
-                                fontSize: 14.sp,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.darkGreyTextColor,
+
+                      // Manual entries section
+                      if (manualEntries.isNotEmpty) ...[
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 12.w, vertical: 8.h),
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit_note,
+                                  size: 18.sp, color: AppColors.primaryColor),
+                              SizedBox(width: 6.w),
+                              Text(
+                                'Manual Entries',
+                                style: TextStyle(
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.darkGreyTextColor,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      _buildManualEntryCard(
-                        autoFetchedEntries.first,
-                        dailyMeasurementController,
-                        showDelete: false,
-                      ),
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          padding: const EdgeInsets.only(bottom: 60.0),
+                          itemCount: manualEntries.length,
+                          itemBuilder: (_, i) {
+                            return _buildManualEntryCard(
+                              manualEntries[i],
+                              dailyMeasurementController,
+                            );
+                          },
+                        ),
+                      ] else if (autoFetchedEntries.isEmpty)
+                        Padding(
+                          padding: EdgeInsets.all(20.r),
+                          child: Text(
+                            'No measurements recorded yet',
+                            style: TextStyle(
+                              fontSize: 14.sp,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ),
                     ],
-                    
-                    // Manual entries section
-                    if (manualEntries.isNotEmpty) ...[
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-                        child: Row(
-                          children: [
-                            Icon(Icons.edit_note, size: 18.sp, color: AppColors.primaryColor),
-                            SizedBox(width: 6.w),
-                            Text(
-                              'Manual Entries',
-                              style: TextStyle(
-                                fontSize: 14.sp,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.darkGreyTextColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        padding: const EdgeInsets.only(bottom: 60.0),
-                        itemCount: manualEntries.length,
-                        itemBuilder: (_, i) {
-                          return _buildManualEntryCard(
-                            manualEntries[i],
-                            dailyMeasurementController,
-                          );
-                        },
-                      ),
-                    ] else if (autoFetchedEntries.isEmpty)
-                      Padding(
-                        padding: EdgeInsets.all(20.r),
-                        child: Text(
-                          'No measurements recorded yet',
-                          style: TextStyle(
-                            fontSize: 14.sp,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ),
-                  ],
-                );
-              },
-            ),
-          ],
+                  );
+                },
+              ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -815,7 +865,8 @@ class _DailyMeasurementsState extends State<DailyMeasurements> {
   }
 
   // Show delete confirmation dialog
-  void _showDeleteConfirmation(int recordId, DailyMeasurementController controller) {
+  void _showDeleteConfirmation(
+      int recordId, DailyMeasurementController controller) {
     Get.defaultDialog(
       title: "Warning !",
       middleText: "Are you sure you want to delete this record ?",
@@ -836,13 +887,15 @@ class _DailyMeasurementsState extends State<DailyMeasurements> {
               showDialog(
                 context: context,
                 builder: (context) => FutureProgressDialog(
-                  controller.getMeasurementsData(selectedDate, selectedCategoryFilter),
+                  controller.getMeasurementsData(
+                      selectedDate, selectedCategoryFilter),
                   message: const Text('Please wait...'),
                 ),
               );
             });
           },
-          style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryColor),
+          style:
+              ElevatedButton.styleFrom(backgroundColor: AppColors.primaryColor),
           child: const Text('Continue'),
         ),
       ),
@@ -851,7 +904,8 @@ class _DailyMeasurementsState extends State<DailyMeasurements> {
         width: Get.width / 3,
         child: ElevatedButton(
           onPressed: () => Get.back(),
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.grey.shade400),
+          style:
+              ElevatedButton.styleFrom(backgroundColor: Colors.grey.shade400),
           child: const Text('Cancel'),
         ),
       ),
@@ -937,7 +991,7 @@ class _DailyMeasurementsState extends State<DailyMeasurements> {
       // Line chart for all other categories
       String yAxisTitle = _getYAxisTitle(category);
       Color lineColor = _getCategoryColor(category);
-      
+
       return SfCartesianChart(
         title: ChartTitle(
           text: category,
@@ -995,7 +1049,7 @@ class _DailyMeasurementsState extends State<DailyMeasurements> {
       case "Weight":
         return "kg";
       case "Temperature":
-        return "Â°F";
+        return "°F";
       case "SpO2":
         return "%";
       default:
@@ -1037,6 +1091,57 @@ class _DailyMeasurementsState extends State<DailyMeasurements> {
     }
   }
 
+  DateTime _parseMeasurementDateTime(MeasurementData m) {
+    final rawDate = (m.date ?? '').trim();
+    final rawTime = (m.time ?? '').trim();
+
+    if (rawDate.isEmpty && rawTime.isEmpty) {
+      return DateTime(1970);
+    }
+
+    final directParse = DateTime.tryParse('$rawDate $rawTime');
+    if (directParse != null) return directParse;
+
+    final dateOnlyParse = DateTime.tryParse(rawDate);
+    if (dateOnlyParse != null) {
+      if (rawTime.isEmpty) return dateOnlyParse;
+      return _applyTimeToDate(dateOnlyParse, rawTime);
+    }
+
+    final dmyMatch =
+        RegExp(r'^(\d{1,2})-(\d{1,2})-(\d{4})$').firstMatch(rawDate);
+    if (dmyMatch != null) {
+      final day = int.parse(dmyMatch.group(1)!);
+      final month = int.parse(dmyMatch.group(2)!);
+      final year = int.parse(dmyMatch.group(3)!);
+      final parsedDate = DateTime(year, month, day);
+      if (rawTime.isEmpty) return parsedDate;
+      return _applyTimeToDate(parsedDate, rawTime);
+    }
+
+    return DateTime(1970);
+  }
+
+  DateTime _applyTimeToDate(DateTime date, String rawTime) {
+    final timeMatch =
+        RegExp(r'^(\d{1,2}):(\d{2})(?:\s*([AaPp][Mm]))?$').firstMatch(rawTime);
+    if (timeMatch == null) return date;
+
+    int hour = int.parse(timeMatch.group(1)!);
+    final minute = int.parse(timeMatch.group(2)!);
+    final amPm = timeMatch.group(3)?.toUpperCase();
+
+    if (amPm != null) {
+      if (hour == 12) {
+        hour = amPm == 'AM' ? 0 : 12;
+      } else if (amPm == 'PM') {
+        hour += 12;
+      }
+    }
+
+    return DateTime(date.year, date.month, date.day, hour, minute);
+  }
+
   String showDataByCategory(MeasurementData measurementData) {
     switch (measurementData.category) {
       case "BP":
@@ -1049,9 +1154,11 @@ class _DailyMeasurementsState extends State<DailyMeasurements> {
         return "Weight: ${measurementData.datas?.weight ?? ''}";
       case "Temperature":
         final tempRaw = measurementData.datas?.temperature ?? '';
-        // If it lacks C or F, assume it's BLE auto-fetched (which is in Â°F)
-        if (tempRaw.isNotEmpty && !tempRaw.toLowerCase().contains('c') && !tempRaw.toLowerCase().contains('f')) {
-          return "Temperature: $tempRaw Â°F";
+        // If it lacks C or F, assume it's BLE auto-fetched (which is in °F)
+        if (tempRaw.isNotEmpty &&
+            !tempRaw.toLowerCase().contains('c') &&
+            !tempRaw.toLowerCase().contains('f')) {
+          return "Temperature: $tempRaw °F";
         }
         return "Temperature: $tempRaw";
       case "SpO2":
@@ -1061,6 +1168,3 @@ class _DailyMeasurementsState extends State<DailyMeasurements> {
     }
   }
 }
-
-
-
