@@ -1,0 +1,198 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Specialization;
+use App\Library\DisplayPath;
+use App\Library\TargetPath;
+use App\Library\Structure;
+use Illuminate\Http\Request;
+use Validator;
+
+class SpecializationController extends Controller
+{
+    use Structure;
+
+    /**
+     * Display a listing of the resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index()
+    {
+        return view('specialization');
+    }
+
+    public function data(Request $request){
+
+        $data = Specialization::orderBy('id', 'desc')->get();
+
+        return datatables()->of($data)->addColumn('action', function ($data) {
+            
+            return '<a href="javascript:void()" name="enable" data-value="'.$data->id.'" class="btn btn-sm btn-danger status-btn"><i class="bx bx-trash"></i></a>';
+        })->addColumn('icon', function ($data) {
+
+            if($data->icon != NULL){
+                $img_with_url = DisplayPath::specialization_icon().'/'.$data->icon;
+                return  '<a href="'.$img_with_url.'" target="_BLANK"><img src="'.$img_with_url.'" style="width:80px; height:60px;"/></a>';
+            }
+            $img_with_url = url("/app-assets/images/icon/no-image.png");
+            return  '<img src="'.$img_with_url.'" style="width:80px; height:60px;"/>';
+        })->addColumn('status', function ($data) {
+            if ($data->is_active == 'Yes') {
+                return '<span class="badge badge-light-info">Active</span>';
+            }
+            return '<span class="badge badge-light-danger">In-Active</span>';
+        })->setRowClass(function ($user) {
+                    return 'specialization-edit-btn';
+        })->setRowAttr([
+            'style' => 'cursor:pointer;',
+            'data-value' => '{{$id}}|{{$name}}|{{$position}}',
+        ])->rawColumns(['action', 'icon', 'status'])->make(true);
+
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function create()
+    {
+        //
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function store(Request $request)
+    {
+        $validator = Validator::make($request->all(), 
+            [ 
+              'name' => 'required',  
+              'position' => 'required|numeric|min:0',  
+            ]);
+
+        if ($validator->fails()) {
+            return response()->json($this->structure(false, $validator->errors()->first()), 200);
+        }
+
+        $file_name = NULL;
+        if ($request->file('icon') != "") {
+
+            $file_type = $_FILES['icon']["type"];
+            $file = $request->file('icon');
+            $ext = preg_replace('/^.*\.([^.]+)$/D', '$1', $file->getClientOriginalName());
+            //Make directory, If doesn't exist.
+            $targetDir = TargetPath::specialization_icon();
+            if (!(File::isDirectory($targetDir))) {
+
+                File::makeDirectory($targetDir, 0777, true, true);
+            }
+            $file_name = date('ymdhis').'_SPECIALIZATION.'.$ext;
+
+            $file->move($targetDir, $file_name);
+        }
+
+        $data = [
+                'icon' => $file_name,
+                'name' => $request->name,
+                'position' => $request->position,
+                'created_at' => date('Y-m-d h:i:s'),
+            ];
+
+        if (Specialization::create($data)) {
+            return response()->json($this->structure(true, 'Specialization Added Successfully!'), 200);
+        }
+
+        return response()->json($this->structure(false, "Something went wrong, Try again!"), 200);
+    }
+
+    /**
+     * Display the specified resource.
+     *
+     * @param  \App\Models\Specialization  $specialization
+     * @return \Illuminate\Http\Response
+     */
+    public function show(Specialization $specialization)
+    {
+        //
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  \App\Models\Specialization  $specialization
+     * @return \Illuminate\Http\Response
+     */
+    public function edit(Specialization $specialization)
+    {
+        //
+    }
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\Specialization  $specialization
+     * @return \Illuminate\Http\Response
+     */
+    public function update(Request $request, Specialization $specialization)
+    {
+        $validator = Validator::make($request->all(), 
+            [ 
+              'name' => 'required',  
+              'position' => 'required|numeric|min:0',  
+            ]);
+
+        if ($validator->fails()) {
+            return response()->json($this->structure(false, $validator->errors()->first()), 200);
+        }
+      
+        $data = [
+                'name' => $request->name,
+                'position' => $request->position,
+                'updated_at' => date('Y-m-d h:i:s'),
+            ];
+
+        if ($request->file('icon') != "") {
+
+            if(!$this->isValidImageFile($request->file('icon'))) 
+                    return response()->json($this->structure(false, "Invalid Image File Format!"), 200);
+                
+            $file_type = $_FILES['icon']["type"];
+            $file = $request->file('icon');
+            $ext = preg_replace('/^.*\.([^.]+)$/D', '$1', $file->getClientOriginalName());
+            //Make directory, If doesn't exist.
+            $targetDir = TargetPath::specialization_icon();
+            if (!(File::isDirectory($targetDir))) {
+
+                File::makeDirectory($targetDir, 0777, true, true);
+            }
+            $file_name = date('ymdhis').'_SPECIALIZATION.'.$ext;
+
+            $file->move($targetDir, $file_name);
+
+            $data['icon'] = $file_name;
+        }
+            
+        if (Specialization::where('id', $request->specialization_id)->update($data)) {
+            return response()->json($this->structure(true, 'Specialization Updated Successfully!'), 200);
+        }
+        return response()->json($this->structure(false, "Something went wrong, Try again!"), 200);
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  \App\Models\Specialization  $specialization
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy(Specialization $specialization)
+    {
+        //
+    }
+}

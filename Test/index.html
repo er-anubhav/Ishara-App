@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Vitals Dashboard | DocuHealth</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-light: #818cf8;
+            --secondary: #ec4899;
+            --bg-dark: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background: var(--bg-dark);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(79, 70, 229, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.15) 0px, transparent 50%);
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(to right, #fff, var(--primary-light));
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            padding: 8px 16px;
+            border-radius: 99px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .status-badge.disconnected {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border-color: rgba(239, 68, 68, 0.2);
+        }
+
+        .pulse {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse-animation 2s infinite;
+        }
+
+        @keyframes pulse-animation {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 2rem;
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .vital-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-dim);
+        }
+
+        .current-value {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .unit {
+            font-size: 1.2rem;
+            font-weight: 400;
+            color: var(--text-dim);
+            margin-left: 4px;
+        }
+
+        .chart-container {
+            height: 200px;
+            width: 100%;
+            margin-top: 1rem;
+        }
+
+        .history-list {
+            grid-column: 1 / -1;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.9rem;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .timestamp {
+            color: var(--text-dim);
+        }
+
+        .log-badge {
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            font-size: 0.75rem;
+            font-family: monospace;
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+
+        @media (max-width: 768px) {
+            body { padding: 1rem; }
+            .grid { grid-template-columns: 1fr; }
+            .current-value { font-size: 2.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <i data-lucide="activity" style="color: var(--primary-light); width: 32px; height: 32px;"></i>
+                <h1>DocuHealth Live</h1>
+            </div>
+            <div id="status" class="status-badge disconnected">
+                <div class="pulse"></div>
+                <span id="status-text">Connecting...</span>
+            </div>
+        </header>
+
+        <div class="grid">
+            <!-- SpO2 Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="vital-title">
+                        <i data-lucide="droplets" style="color: var(--secondary);"></i>
+                        <span>Oxygen Saturation</span>
+                    </div>
+                </div>
+                <div class="current-value" id="spo2-val">--<span class="unit">%</span></div>
+                <div class="chart-container">
+                    <canvas id="spo2Chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Temp Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="vital-title">
+                        <i data-lucide="thermometer" style="color: var(--warning);"></i>
+                        <span>Body Temperature</span>
+                    </div>
+                </div>
+                <div class="current-value" id="temp-val">--<span class="unit">°F</span></div>
+                <div class="chart-container">
+                    <canvas id="tempChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Blood Pressure Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="vital-title">
+                        <i data-lucide="activity" style="color: var(--primary-light);"></i>
+                        <span>Blood Pressure</span>
+                    </div>
+                </div>
+                <div class="current-value" id="bp-val">--/--<span class="unit">mmHg</span></div>
+                <div class="chart-container">
+                    <canvas id="bpChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Terminal/Logs Card -->
+            <div class="card history-list">
+                <div class="card-header">
+                    <div class="vital-title">
+                        <i data-lucide="terminal"></i>
+                        <span>Live BLE Event Stream</span>
+                    </div>
+                </div>
+                <div id="logs">
+                    <div class="history-item">
+                        <span class="timestamp">Waiting for connection...</span>
+                        <span class="log-badge">SYSTEM</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Lucide Icons Initialization
+        lucide.createIcons();
+
+        // Chart Config
+        const createChartConfig = (label, color, min, max) => ({
+            type: 'line',
+            data: {
+                labels: Array(30).fill(''),
+                datasets: [{
+                    label: label,
+                    data: Array(30).fill(null),
+                    borderColor: color,
+                    backgroundColor: color + '22',
+                    borderWidth: 3,
+                    tension: 0.3,
+                    fill: true,
+                    pointRadius: 0,
+                    pointHoverRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 400,
+                    easing: 'linear'
+                },
+                plugins: { 
+                    legend: { display: false },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                        titleColor: '#94a3b8',
+                        bodyColor: '#fff',
+                        borderColor: 'rgba(255, 255, 255, 0.1)',
+                        borderWidth: 1
+                    }
+                },
+                scales: {
+                    x: { display: false },
+                    y: {
+                        suggestedMin: min,
+                        suggestedMax: max,
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#94a3b8', font: { size: 10 } }
+                    }
+                }
+            }
+        });
+
+        const spo2Chart = new Chart(document.getElementById('spo2Chart'), createChartConfig('SpO2', '#ec4899', 70, 100));
+        const tempChart = new Chart(document.getElementById('tempChart'), createChartConfig('Temp', '#f59e0b', 94, 105));
+        const bpConfig = createChartConfig('BP Systolic', '#818cf8', 40, 200);
+        // Add Diastolic dataset
+        bpConfig.data.datasets.push({
+            label: 'BP Diastolic',
+            data: Array(30).fill(null),
+            borderColor: '#10b981',
+            backgroundColor: '#10b98122',
+            borderWidth: 3,
+            tension: 0.3,
+            fill: true,
+            pointRadius: 0,
+            pointHoverRadius: 4
+        });
+        const bpChart = new Chart(document.getElementById('bpChart'), bpConfig);
+
+        function updateChart(chart, value) {
+            chart.data.datasets[0].data.push(value);
+            chart.data.datasets[0].data.shift();
+            chart.update('none'); // Update without full re-animation for smoothness
+        }
+
+        function addLog(message, badge) {
+            const logs = document.getElementById('logs');
+            const item = document.createElement('div');
+            item.className = 'history-item';
+            const now = new Date().toLocaleTimeString();
+            item.innerHTML = `
+                <span class="timestamp">${now}: ${message}</span>
+                <span class="log-badge">${badge}</span>
+            `;
+            logs.insertBefore(item, logs.firstChild);
+            if (logs.children.length > 50) logs.lastChild.remove();
+        }
+
+        // WebSocket Connection
+        const statusEl = document.getElementById('status');
+        const statusText = document.getElementById('status-text');
+
+        function connect() {
+            const ws = new WebSocket('ws://localhost:8765');
+            let reconnectTimer;
+
+            ws.onopen = () => {
+                statusEl.classList.remove('disconnected');
+                statusText.innerText = 'Live Streaming';
+                addLog('WebSocket connected', 'WS');
+                clearInterval(reconnectTimer);
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    const val = data.value;
+                    const type = data.type_name;
+                    
+                    if (type === "SpO2") {
+                        const el = document.getElementById('spo2-val');
+                        el.innerHTML = `${val.toFixed(1)}<span class="unit">%</span>`;
+                        el.style.color = val < 90 ? '#ef4444' : 'var(--text-main)';
+                        updateChart(spo2Chart, val);
+                    } else if (type === "Temperature") {
+                        const el = document.getElementById('temp-val');
+                        // Temp from device might be in Celsius (e.g., 36.5) or F. 
+                        const unit = val < 50 ? '°C' : '°F';
+                        el.innerHTML = `${val.toFixed(1)}<span class="unit">${unit}</span>`;
+                        el.style.color = (val > 38 && unit === '°C') || (val > 100 && unit === '°F') ? '#ef4444' : 'var(--text-main)';
+                        updateChart(tempChart, val);
+                    } else if (type === "BP_SYS") {
+                        const el = document.getElementById('bp-val');
+                        window.latestSys = val;
+                        const dia = window.latestDia || '--';
+                        el.innerHTML = `${val}/${dia}<span class="unit">mmHg</span>`;
+                        bpChart.data.datasets[0].data.push(val);
+                        bpChart.data.datasets[0].data.shift();
+                        bpChart.update('none');
+                    } else if (type === "BP_DIA") {
+                        const el = document.getElementById('bp-val');
+                        window.latestDia = val;
+                        const sys = window.latestSys || '--';
+                        el.innerHTML = `${sys}/${val}<span class="unit">mmHg</span>`;
+                        bpChart.data.datasets[1].data.push(val);
+                        bpChart.data.datasets[1].data.shift();
+                        bpChart.update('none');
+                    }
+                    
+                    addLog(`[${type}] Value: ${val}`, 'BLE');
+                } catch (e) {
+                    console.error('Data parsing error', e);
+                }
+            };
+
+            ws.onclose = () => {
+                statusEl.classList.add('disconnected');
+                statusText.innerText = 'Reconnecting...';
+                addLog('Connection lost. Retrying...', 'ERROR');
+                reconnectTimer = setTimeout(connect, 2000);
+            };
+
+            ws.onerror = (err) => {
+                ws.close();
+            };
+        }
+
+        // Start connection
+        connect();
+    </script>
+</body>
+</html>
