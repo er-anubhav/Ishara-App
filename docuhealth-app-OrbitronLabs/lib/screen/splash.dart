@@ -45,15 +45,27 @@ class _SplashState extends State<Splash> {
     return Scaffold(
       body: SafeArea(
         child: Center(
-          child: Container(
-            width: 110.h,
-            height: 139.3333282470703.w,
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage('assets/images/logo.png'),
-                fit: BoxFit.fitWidth,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 110.h,
+                height: 139.3333282470703.w,
+                decoration: const BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage('assets/images/logo.png'),
+                    fit: BoxFit.fitWidth,
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(height: 16),
+              Text(
+                'Preparing your records...',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey.shade600,
+                    ),
+              ),
+            ],
           ),
         ),
       ),

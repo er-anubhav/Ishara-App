@@ -24,15 +24,23 @@ class _DailyReminderState extends State<DailyReminder> {
   DateTime selectedDate = DateTime.now();
   bool snooz = false;
 
+  Future<void> _loadReminders() async {
+    try {
+      final controller =
+          Provider.of<DailyReminderController>(context, listen: false);
+      await controller.getDailyReminder();
+      await controller.getDateWiseReminder(selectedDate);
+    } catch (e) {
+      debugPrint('DailyReminder load error: $e');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     Future.delayed(Duration.zero, () {
       if (!mounted) return;
-      Provider.of<DailyReminderController>(context, listen: false)
-          .getDailyReminder();
-      Provider.of<DailyReminderController>(context, listen: false)
-          .getDateWiseReminder(selectedDate);
+      _loadReminders();
     });
   }
 
@@ -155,9 +163,9 @@ class _DailyReminderState extends State<DailyReminder> {
                             ),
                           ),
                         ),
-                        datewiseReminders.isEmpty
-                            ? const Expanded(
-                                child: Center(
+                        Expanded(
+                          child: datewiseReminders.isEmpty
+                              ? const Center(
                                   child: Text(
                                     "No data found",
                                     style: TextStyle(
@@ -166,110 +174,112 @@ class _DailyReminderState extends State<DailyReminder> {
                                       color: Colors.grey,
                                     ),
                                   ),
-                                ),
-                              )
-                            : ListView.builder(
-                                shrinkWrap: true,
-                                itemCount: datewiseReminders.length,
-                                itemBuilder: (_, i) {
-                                  return InkWell(
-                                    onTap: () {},
-                                    child: Card(
-                                      color: Colors.grey.shade100,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(20.r),
-                                      ),
-                                      margin: EdgeInsets.only(
-                                          left: 10.w, right: 10.w, top: 10.h),
-                                      child: Padding(
-                                        padding: EdgeInsets.all(15.r),
-                                        child: Row(
-                                          children: [
-                                            Container(
-                                              height: 50.h,
-                                              width: 50.w,
-                                              decoration: BoxDecoration(
-                                                borderRadius:
-                                                    BorderRadius.circular(15.r),
-                                                image: const DecorationImage(
-                                                  image: AssetImage(
-                                                    'assets/icons/remainder-icon.png',
+                                )
+                              : ListView.builder(
+                                  itemCount: datewiseReminders.length,
+                                  itemBuilder: (_, i) {
+                                    return InkWell(
+                                      onTap: () {},
+                                      child: Card(
+                                        color: Colors.grey.shade100,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(20.r),
+                                        ),
+                                        margin: EdgeInsets.only(
+                                            left: 10.w, right: 10.w, top: 10.h),
+                                        child: Padding(
+                                          padding: EdgeInsets.all(15.r),
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                height: 50.h,
+                                                width: 50.w,
+                                                decoration: BoxDecoration(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          15.r),
+                                                  image: const DecorationImage(
+                                                    image: AssetImage(
+                                                      'assets/icons/remainder-icon.png',
+                                                    ),
                                                   ),
                                                 ),
                                               ),
-                                            ),
-                                            Expanded(
-                                              child: Padding(
-                                                padding:
-                                                    EdgeInsets.only(left: 10.w),
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment
-                                                          .spaceBetween,
-                                                  children: [
-                                                    Text(
-                                                      "${datewiseReminders[i].time}",
-                                                      style: TextStyle(
-                                                        fontSize: 18.sp,
-                                                        fontWeight:
-                                                            FontWeight.w400,
-                                                        color: AppColors
-                                                            .primaryColor,
+                                              Expanded(
+                                                child: Padding(
+                                                  padding: EdgeInsets.only(
+                                                      left: 10.w),
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .spaceBetween,
+                                                    children: [
+                                                      Text(
+                                                        "${datewiseReminders[i].time}",
+                                                        style: TextStyle(
+                                                          fontSize: 18.sp,
+                                                          fontWeight:
+                                                              FontWeight.w400,
+                                                          color: AppColors
+                                                              .primaryColor,
+                                                        ),
                                                       ),
-                                                    ),
-                                                    SizedBox(
-                                                      height: 10.h,
-                                                    ),
-                                                    Text(
-                                                      "${datewiseReminders[i].name} (${datewiseReminders[i].eventType})",
-                                                      style: TextStyle(
-                                                        fontSize: 12.sp,
+                                                      SizedBox(
+                                                        height: 10.h,
                                                       ),
-                                                    ),
-                                                  ],
+                                                      Text(
+                                                        "${datewiseReminders[i].name} (${datewiseReminders[i].eventType})",
+                                                        style: TextStyle(
+                                                          fontSize: 12.sp,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                            Container(
-                                              padding: EdgeInsets.symmetric(
-                                                horizontal: 10.w,
-                                                vertical: 2.h,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: !datewiseReminders[i]
-                                                        .status!
-                                                    ? Colors.red
-                                                    : AppColors.primaryColor,
-                                                borderRadius:
-                                                    BorderRadius.circular(5.r),
-                                              ),
-                                              child:
-                                                  datewiseReminders[i].status!
-                                                      ? Text(
-                                                          "Running",
-                                                          style: TextStyle(
-                                                            color: AppColors
-                                                                .whiteTextColor,
+                                              Container(
+                                                padding: EdgeInsets.symmetric(
+                                                  horizontal: 10.w,
+                                                  vertical: 2.h,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: !datewiseReminders[i]
+                                                          .status!
+                                                      ? Colors.red
+                                                      : AppColors.primaryColor,
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          5.r),
+                                                ),
+                                                child:
+                                                    datewiseReminders[i].status!
+                                                        ? Text(
+                                                            "Running",
+                                                            style: TextStyle(
+                                                              color: AppColors
+                                                                  .whiteTextColor,
+                                                            ),
+                                                          )
+                                                        : Text(
+                                                            "Closed",
+                                                            style: TextStyle(
+                                                              color: AppColors
+                                                                  .whiteTextColor,
+                                                            ),
                                                           ),
-                                                        )
-                                                      : Text(
-                                                          "Closed",
-                                                          style: TextStyle(
-                                                            color: AppColors
-                                                                .whiteTextColor,
-                                                          ),
-                                                        ),
-                                            ),
-                                          ],
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  );
-                                },
-                              ),
+                                    );
+                                  },
+                                ),
+                        ),
                       ],
                     ),
                   ),
@@ -277,9 +287,9 @@ class _DailyReminderState extends State<DailyReminder> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        allReminders.isEmpty
-                            ? const Expanded(
-                                child: Center(
+                        Expanded(
+                          child: allReminders.isEmpty
+                              ? const Center(
                                   child: Text(
                                     "No data found",
                                     style: TextStyle(
@@ -288,127 +298,131 @@ class _DailyReminderState extends State<DailyReminder> {
                                       color: Colors.grey,
                                     ),
                                   ),
-                                ),
-                              )
-                            : ListView.builder(
-                                shrinkWrap: true,
-                                itemCount: allReminders.length,
-                                itemBuilder: (_, i) {
-                                  return InkWell(
-                                    onTap: () {},
-                                    child: Card(
-                                      color: Colors.grey.shade100,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(20.r),
-                                      ),
-                                      margin: EdgeInsets.only(
-                                          left: 10.w, right: 10.w, top: 10.h),
-                                      child: Padding(
-                                        padding: EdgeInsets.all(15.r),
-                                        child: Row(
-                                          children: [
-                                            Container(
-                                              height: 50.h,
-                                              width: 50.w,
-                                              decoration: BoxDecoration(
-                                                borderRadius:
-                                                    BorderRadius.circular(15.r),
-                                                image: const DecorationImage(
-                                                  image: AssetImage(
-                                                    'assets/icons/remainder-icon.png',
+                                )
+                              : ListView.builder(
+                                  itemCount: allReminders.length,
+                                  itemBuilder: (_, i) {
+                                    return InkWell(
+                                      onTap: () {},
+                                      child: Card(
+                                        color: Colors.grey.shade100,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(20.r),
+                                        ),
+                                        margin: EdgeInsets.only(
+                                            left: 10.w, right: 10.w, top: 10.h),
+                                        child: Padding(
+                                          padding: EdgeInsets.all(15.r),
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                height: 50.h,
+                                                width: 50.w,
+                                                decoration: BoxDecoration(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          15.r),
+                                                  image: const DecorationImage(
+                                                    image: AssetImage(
+                                                      'assets/icons/remainder-icon.png',
+                                                    ),
                                                   ),
                                                 ),
                                               ),
-                                            ),
-                                            Expanded(
-                                              child: Padding(
-                                                padding:
-                                                    EdgeInsets.only(left: 10.w),
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment
-                                                          .spaceBetween,
-                                                  children: [
-                                                    Text(
-                                                      "${allReminders[i].time}",
-                                                      style: TextStyle(
-                                                        fontSize: 18.sp,
-                                                        fontWeight:
-                                                            FontWeight.w400,
-                                                        color: AppColors
-                                                            .primaryColor,
+                                              Expanded(
+                                                child: Padding(
+                                                  padding: EdgeInsets.only(
+                                                      left: 10.w),
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .spaceBetween,
+                                                    children: [
+                                                      Text(
+                                                        "${allReminders[i].time}",
+                                                        style: TextStyle(
+                                                          fontSize: 18.sp,
+                                                          fontWeight:
+                                                              FontWeight.w400,
+                                                          color: AppColors
+                                                              .primaryColor,
+                                                        ),
                                                       ),
-                                                    ),
-                                                    SizedBox(
-                                                      height: 10.h,
-                                                    ),
-                                                    Text(
-                                                      "${allReminders[i].name} (${allReminders[i].eventType})",
-                                                      style: TextStyle(
-                                                        fontSize: 12.sp,
+                                                      SizedBox(
+                                                        height: 10.h,
                                                       ),
-                                                    ),
-                                                  ],
+                                                      Text(
+                                                        "${allReminders[i].name} (${allReminders[i].eventType})",
+                                                        style: TextStyle(
+                                                          fontSize: 12.sp,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                            Row(
-                                              children: [
-                                                CupertinoSwitch(
-                                                  activeTrackColor:
-                                                      AppColors.primaryColor,
-                                                  value:
-                                                      allReminders[i].status!,
-                                                  onChanged: (bool value) {
-                                                    snooz = value;
-                                                    showDialog(
-                                                      context: context,
-                                                      builder: (context) =>
-                                                          FutureProgressDialog(
-                                                        dailyReminderController
-                                                            .onSwitchPress(
-                                                                allReminders[i]
-                                                                    .id!,
-                                                                !allReminders[i]
-                                                                    .status!),
-                                                        message: const Text(
-                                                            'Deleting please wait ...'),
-                                                      ),
-                                                    );
-                                                  },
-                                                ),
-                                                IconButton(
-                                                  onPressed: () {
-                                                    showDialog(
-                                                      context: context,
-                                                      builder: (context) =>
-                                                          FutureProgressDialog(
-                                                        dailyReminderController
-                                                            .onDeleteButtonPress(
-                                                                allReminders[i]
-                                                                    .id!),
-                                                        message: const Text(
-                                                            'Deleting please wait ...'),
-                                                      ),
-                                                    );
-                                                  },
-                                                  icon: const Icon(
-                                                    Icons.delete,
-                                                    color: Colors.red,
+                                              Row(
+                                                children: [
+                                                  CupertinoSwitch(
+                                                    activeTrackColor:
+                                                        AppColors.primaryColor,
+                                                    value:
+                                                        allReminders[i].status!,
+                                                    onChanged: (bool value) {
+                                                      snooz = value;
+                                                      showDialog(
+                                                        context: context,
+                                                        builder: (context) =>
+                                                            FutureProgressDialog(
+                                                          dailyReminderController
+                                                              .onSwitchPress(
+                                                                  allReminders[
+                                                                          i]
+                                                                      .id!,
+                                                                  !allReminders[
+                                                                          i]
+                                                                      .status!),
+                                                          message: const Text(
+                                                              'Deleting please wait ...'),
+                                                        ),
+                                                      );
+                                                    },
                                                   ),
-                                                )
-                                              ],
-                                            )
-                                          ],
+                                                  IconButton(
+                                                    onPressed: () {
+                                                      showDialog(
+                                                        context: context,
+                                                        builder: (context) =>
+                                                            FutureProgressDialog(
+                                                          dailyReminderController
+                                                              .onDeleteButtonPress(
+                                                                  allReminders[
+                                                                          i]
+                                                                      .id!),
+                                                          message: const Text(
+                                                              'Deleting please wait ...'),
+                                                        ),
+                                                      );
+                                                    },
+                                                    icon: const Icon(
+                                                      Icons.delete,
+                                                      color: Colors.red,
+                                                    ),
+                                                  )
+                                                ],
+                                              )
+                                            ],
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  );
-                                },
-                              ),
+                                    );
+                                  },
+                                ),
+                        ),
                       ],
                     ),
                   ),

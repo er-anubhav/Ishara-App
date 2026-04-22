@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:docuhealth/components/default_button.dart';
+import 'package:docuhealth/helper/get_storage_helper.dart';
 import 'package:docuhealth/screen/folders/create_folder_dialog.dart';
 import 'package:docuhealth/services/base_client.dart';
 import 'package:docuhealth/theme.dart';
@@ -33,12 +34,14 @@ class UploadDcoumnetScreen extends StatefulWidget {
 
 class _UploadDcoumnetScreenState extends State<UploadDcoumnetScreen> {
   BaseClient baseClient = BaseClient();
+  static const String _localUploadsKey = 'local_uploaded_documents';
   TextEditingController remarksController = TextEditingController();
   TextEditingController fileNameController = TextEditingController();
   String inputHintText = "";
   String? dropdownvalue;
   var items = [];
   List<String> uploadedImagesPath = [];
+  bool _lastUploadWasLocal = false;
 
   Future<void> getFolderCategoryType() async {
     switch (widget.selectedCategory) {
@@ -73,29 +76,85 @@ class _UploadDcoumnetScreenState extends State<UploadDcoumnetScreen> {
   }
 
   Future<bool> onUploadDocumentPress() async {
-    for (var i = 0; i < widget.uploadIMages.length; i++) {
-      final response = await baseClient.uploadDocument(
-          'file/uploader', '', widget.uploadIMages[i].path, true);
-      debugPrint(response);
-      var respData = jsonDecode(response);
-      if (respData['success']) {
-        uploadedImagesPath.add(respData['data'][0]['file_name'].toString());
+    uploadedImagesPath = [];
+    _lastUploadWasLocal = false;
+
+    try {
+      for (var i = 0; i < widget.uploadIMages.length; i++) {
+        final response = await baseClient.uploadDocument(
+          'file/uploader',
+          '',
+          widget.uploadIMages[i].path,
+          true,
+        );
+
+        dynamic respData;
+        if (response is String && response.isNotEmpty) {
+          respData = jsonDecode(response);
+        } else if (response is Map) {
+          respData = response;
+        } else {
+          respData = null;
+        }
+
+        final uploadSuccess = respData is Map &&
+            respData['success'] == true &&
+            respData['data'] is List;
+
+        if (uploadSuccess) {
+          final fileName = ((respData['data'] as List).isNotEmpty
+                  ? respData['data'][0]['file_name']
+                  : null)
+              ?.toString();
+          if (fileName != null && fileName.isNotEmpty) {
+            uploadedImagesPath.add(fileName);
+          }
+        } else {
+          return _saveUploadLocally();
+        }
       }
+
+      var data = {
+        "files_name": uploadedImagesPath.join(','),
+        "files_rename": fileNameController.text,
+        "destination": dropdownvalue ?? widget.selectedCategory,
+        "remarks": remarksController.text
+      };
+
+      final response = await baseClient.post('file', data, true);
+      final postSuccess = response is Map && response['success'] == true;
+      if (postSuccess) {
+        return true;
+      }
+
+      return _saveUploadLocally();
+    } catch (_) {
+      return _saveUploadLocally();
     }
-    Timer(
-      const Duration(seconds: 2),
-      () {},
-    );
-    var data = {
-      "files_name": uploadedImagesPath.join(','),
-      "files_rename": fileNameController.text,
-      "destination": dropdownvalue ?? widget.selectedCategory,
-      "remarks": remarksController.text
-    };
-    final response = await baseClient.post('file', data, true);
-    if (response['success']) {
+  }
+
+  bool _saveUploadLocally() {
+    try {
+      final existing = (box.read(_localUploadsKey) as List?) ?? <dynamic>[];
+      final localRecord = <String, dynamic>{
+        'id': DateTime.now().millisecondsSinceEpoch,
+        'category': widget.selectedCategory,
+        'title': fileNameController.text.trim().isEmpty
+            ? 'Local Document'
+            : fileNameController.text.trim(),
+        'remarks': remarksController.text.trim(),
+        'destination': dropdownvalue ?? widget.selectedCategory,
+        'files': widget.uploadIMages.map((e) => e.path).toList(),
+        'created_at': DateTime.now().toIso8601String(),
+        'sync_status': 'local_only',
+      };
+
+      final merged = <dynamic>[localRecord, ...existing];
+      box.write(_localUploadsKey, merged);
+      _lastUploadWasLocal = true;
       return true;
-    } else {
+    } catch (_) {
+      _lastUploadWasLocal = false;
       return false;
     }
   }
@@ -317,14 +376,21 @@ class _UploadDcoumnetScreenState extends State<UploadDcoumnetScreen> {
               ),
             );
             debugPrint('$resp');
-            if (resp) {
+            if (resp == true) {
               Get.snackbar(
-                'Success',
-                'Uploaded successfully!',
+                _lastUploadWasLocal ? 'Saved Locally' : 'Success',
+                _lastUploadWasLocal
+                    ? 'Network issue detected. Document saved locally.'
+                    : 'Uploaded successfully!',
               );
               widget.redirectTo == ""
                   ? Get.offAllNamed('/Dashboard')
                   : Get.offNamedUntil(widget.redirectTo, (route) => false);
+            } else {
+              Get.snackbar(
+                'Upload Failed',
+                'Could not upload or save locally. Please try again.',
+              );
             }
           },
         ),

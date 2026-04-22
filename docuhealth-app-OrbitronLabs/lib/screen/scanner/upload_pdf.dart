@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:docuhealth/components/pdf_preview.dart';
+import 'package:docuhealth/helper/get_storage_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:future_progress_dialog/future_progress_dialog.dart';
@@ -32,6 +33,7 @@ class UploadPdf extends StatefulWidget {
 
 class _UploadPdfState extends State<UploadPdf> {
   BaseClient baseClient = BaseClient();
+  static const String _localUploadsKey = 'local_uploaded_documents';
   TextEditingController remarksController = TextEditingController();
   TextEditingController fileNameController = TextEditingController();
 
@@ -39,6 +41,7 @@ class _UploadPdfState extends State<UploadPdf> {
   String? dropdownvalue;
   var items = [];
   List<String> uploadedImagesPath = [];
+  bool _lastUploadWasLocal = false;
 
   Future<void> getFolderCategoryType() async {
     switch (widget.selectedCategory) {
@@ -72,26 +75,83 @@ class _UploadPdfState extends State<UploadPdf> {
   }
 
   Future<bool> onUploadDocumentPress() async {
-    final response = await baseClient.uploadDocument(
-        'file/uploader', '', widget.upload.path, true);
-    var respData = jsonDecode(response);
-    if (respData['success']) {
-      uploadedImagesPath.add(respData['data'][0]['file_name'].toString());
+    uploadedImagesPath = [];
+    _lastUploadWasLocal = false;
+
+    try {
+      final response = await baseClient.uploadDocument(
+        'file/uploader',
+        '',
+        widget.upload.path,
+        true,
+      );
+
+      dynamic respData;
+      if (response is String && response.isNotEmpty) {
+        respData = jsonDecode(response);
+      } else if (response is Map) {
+        respData = response;
+      } else {
+        respData = null;
+      }
+
+      final uploadSuccess = respData is Map &&
+          respData['success'] == true &&
+          respData['data'] is List;
+
+      if (uploadSuccess) {
+        final fileName = ((respData['data'] as List).isNotEmpty
+                ? respData['data'][0]['file_name']
+                : null)
+            ?.toString();
+        if (fileName != null && fileName.isNotEmpty) {
+          uploadedImagesPath.add(fileName);
+        }
+      } else {
+        return _saveUploadLocally();
+      }
+
+      var data = {
+        "files_name": uploadedImagesPath.join(','),
+        "files_rename": fileNameController.text,
+        "destination": dropdownvalue ?? widget.selectedCategory ?? 'DOCUMENTS',
+        "remarks": remarksController.text
+      };
+
+      final apiresponse = await baseClient.post('file', data, true);
+      final postSuccess = apiresponse is Map && apiresponse['success'] == true;
+      if (postSuccess) {
+        return true;
+      }
+
+      return _saveUploadLocally();
+    } catch (_) {
+      return _saveUploadLocally();
     }
-    Timer(
-      const Duration(seconds: 2),
-      () {},
-    );
-    var data = {
-      "files_name": uploadedImagesPath.join(','),
-      "files_rename": fileNameController.text,
-      "destination": dropdownvalue ?? widget.selectedCategory,
-      "remarks": remarksController.text
-    };
-    final apiresponse = await baseClient.post('file', data, true);
-    if (apiresponse['success']) {
+  }
+
+  bool _saveUploadLocally() {
+    try {
+      final existing = (box.read(_localUploadsKey) as List?) ?? <dynamic>[];
+      final localRecord = <String, dynamic>{
+        'id': DateTime.now().millisecondsSinceEpoch,
+        'category': widget.selectedCategory ?? 'DOCUMENTS',
+        'title': fileNameController.text.trim().isEmpty
+            ? 'Local PDF Document'
+            : fileNameController.text.trim(),
+        'remarks': remarksController.text.trim(),
+        'destination': dropdownvalue ?? widget.selectedCategory ?? 'DOCUMENTS',
+        'files': <String>[widget.upload.path],
+        'created_at': DateTime.now().toIso8601String(),
+        'sync_status': 'local_only',
+      };
+
+      final merged = <dynamic>[localRecord, ...existing];
+      box.write(_localUploadsKey, merged);
+      _lastUploadWasLocal = true;
       return true;
-    } else {
+    } catch (_) {
+      _lastUploadWasLocal = false;
       return false;
     }
   }
@@ -386,14 +446,21 @@ class _UploadPdfState extends State<UploadPdf> {
               ),
             );
             debugPrint(resp.toString());
-            if (resp) {
+            if (resp == true) {
               Get.snackbar(
-                'Success',
-                'Uploaded successfully!',
+                _lastUploadWasLocal ? 'Saved Locally' : 'Success',
+                _lastUploadWasLocal
+                    ? 'Network issue detected. PDF saved locally.'
+                    : 'Uploaded successfully!',
               );
               widget.redirectTo == ""
                   ? Get.offAllNamed('/Dashboard')
                   : Get.offNamedUntil(widget.redirectTo!, (route) => false);
+            } else {
+              Get.snackbar(
+                'Upload Failed',
+                'Could not upload or save locally. Please try again.',
+              );
             }
           },
         ),

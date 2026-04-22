@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:docuhealth/contstants/app_colors.dart';
+import 'package:docuhealth/controllers/daily_reminder_controller.dart';
 import 'package:docuhealth/services/base_client.dart';
+import 'package:docuhealth/services/app_exception.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -10,6 +12,7 @@ import 'package:flutter_time_picker_spinner/flutter_time_picker_spinner.dart';
 import 'package:future_progress_dialog/future_progress_dialog.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:weekday_selector/weekday_selector.dart';
 
 import '../../common.dart';
@@ -64,20 +67,41 @@ class _NewAddedReminderScreenState extends State<NewAddedReminderScreen> {
   FocusNode alarmFocusNode = FocusNode();
 
   Future<void> getNameSuggestions() async {
-    final response = await baseClient.get('reminders/suggetions', true);
-    if (response['success']) {
-      nameSuggestions = [];
-      var data = response['data'];
-      for (var i = 0; i < data.length; i++) {
-        nameSuggestions.add(data[i]);
+    try {
+      final response = await baseClient.get('reminders/suggetions', true,
+          showSnackbar: false);
+      if (response['success'] == true) {
+        nameSuggestions = [];
+        final data = response['data'];
+        for (var i = 0; i < data.length; i++) {
+          nameSuggestions.add(data[i]);
+        }
+      } else {
+        nameSuggestions = [];
       }
+    } catch (e) {
+      debugPrint('getNameSuggestions error: $e');
+      nameSuggestions = [];
     }
+
+    if (!mounted) return;
     setState(() {});
   }
 
   Future<bool> setAlarm() async {
-    var data = {
-      "name": alarmController.text,
+    final name = alarmController.text.trim();
+    if (name.isEmpty) {
+      Get.snackbar("Validation", "Alarm name is required");
+      return false;
+    }
+
+    if (eventType.isEmpty) {
+      Get.snackbar("Validation", "Please select reminder schedule");
+      return false;
+    }
+
+    final data = {
+      "name": name,
       "time": DateFormat.jm().format(_time),
       "event_type": eventType,
       "event_at": jsonEncode(eventat),
@@ -85,24 +109,87 @@ class _NewAddedReminderScreenState extends State<NewAddedReminderScreen> {
       "snooze": snooz.toString(),
       "repeat": selectedRepeat
     };
-    final response = await baseClient.post('reminders', data, true);
-    if (response["success"]) {
-      Get.snackbar("Success", response['message'],
-          duration: const Duration(seconds: 1));
-      Timer(const Duration(seconds: 3), () {
-        Get.back();
+
+    try {
+      final response = await baseClient.post('reminders', data, true);
+      if (response["success"] == true) {
+        Get.snackbar("Success", response['message'],
+            duration: const Duration(seconds: 1));
+        Timer(const Duration(seconds: 3), () {
+          Get.back();
+        });
+        return true;
+      }
+
+      final savedLocally = await _saveReminderOffline(name);
+      if (savedLocally) {
+        return true;
+      }
+
+      Get.snackbar("Failed",
+          response['message']?.toString() ?? "Unable to save reminder");
+      return false;
+    } on AppException catch (e) {
+      final savedLocally = await _saveReminderOffline(name);
+      if (savedLocally) {
+        return true;
+      }
+
+      Get.snackbar("Failed", e.message ?? "Server error while saving reminder");
+      return false;
+    } catch (e) {
+      final savedLocally = await _saveReminderOffline(name);
+      if (savedLocally) {
+        return true;
+      }
+
+      Get.snackbar("Failed", "Unexpected error while saving reminder");
+      debugPrint('setAlarm error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> _saveReminderOffline(String name) async {
+    try {
+      final dailyReminderController =
+          Provider.of<DailyReminderController>(context, listen: false);
+      final saved = await dailyReminderController.saveReminderLocally(
+        name: name,
+        time: DateFormat.jm().format(_time),
+        eventType: eventType,
+        eventAt: List<String>.from(eventat),
+        snooze: snooz,
+        interval: selectSnooz,
+        repeat: selectedRepeat,
+      );
+
+      if (!saved) return false;
+
+      await dailyReminderController.getDailyReminder();
+      if (!mounted) return true;
+
+      Get.snackbar(
+        "Saved Offline",
+        "Reminder saved locally. It will stay available on this device.",
+      );
+      Timer(const Duration(seconds: 2), () {
+        if (mounted) {
+          Get.back();
+        }
       });
       return true;
-    } else {
-      Get.snackbar("Failed", response['message']);
+    } catch (e) {
+      debugPrint('_saveReminderOffline error: $e');
       return false;
     }
   }
 
   void formatDescide() {
+    eventat = [];
+
     if (selectedWeekDaysNameList.isEmpty && fromDate == "") {
       eventType = "Once";
-      eventat.add(convertIntoWeekFormat(DateTime.now()));
+      eventat = [convertIntoWeekFormat(DateTime.now())];
     } else if ((selectedWeekDaysNameList.length == 7) &&
         (fromDate == '' || toDate == '')) {
       eventType = "Daily";
@@ -111,7 +198,7 @@ class _NewAddedReminderScreenState extends State<NewAddedReminderScreen> {
             selectedWeekDaysNameList.isNotEmpty) &&
         (fromDate == '' || toDate == '')) {
       eventType = "Weekly";
-      eventat = selectedWeekDaysNameList;
+      eventat = List<String>.from(selectedWeekDaysNameList);
     } else {
       eventType = "Date Range";
       eventat = [fromDate, toDate];
@@ -121,6 +208,7 @@ class _NewAddedReminderScreenState extends State<NewAddedReminderScreen> {
   @override
   void initState() {
     super.initState();
+    _time = DateTime.now();
   }
 
   @override
@@ -173,303 +261,313 @@ class _NewAddedReminderScreenState extends State<NewAddedReminderScreen> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(30.r),
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          const SizedBox(
-                            width: 15,
-                          ),
-                          selectedWeekDaysNameList.isEmpty
-                              ? Text(
-                                  fromDate == ''
-                                      ? convertIntoWeekFormat(DateTime.now())
-                                      : fromDate +
-                                          (toDate == '' ? '' : ' - $toDate'),
-                                  style: TextStyle(
-                                      color: Colors.black, fontSize: 14.sp),
-                                )
-                              : (fromDate == '' || toDate == ''
-                                  ? selectedWeekDaysNameList.length == 7
-                                      ? Text(
-                                          'Every Day',
-                                          style: TextStyle(
-                                              color: Colors.black,
-                                              fontSize: 14.sp),
-                                        )
-                                      : Expanded(
-                                          child: Wrap(
-                                            children: selectedWeekDaysNameList
-                                                .map((e) => Text(
-                                                      '$e, ',
-                                                      style: TextStyle(
-                                                          color: Colors.black,
-                                                          fontSize: 14.sp),
-                                                    ))
-                                                .toList(),
-                                          ),
-                                        )
-                                  : Text(
-                                      fromDate == ''
-                                          ? convertIntoWeekFormat(
-                                              DateTime.now())
-                                          : fromDate +
-                                              (toDate == ''
-                                                  ? ''
-                                                  : ' - $toDate'),
-                                      style: TextStyle(
-                                          color: Colors.black, fontSize: 14.sp),
-                                    )),
-                          const Spacer(),
-                          (fromDate != '')
-                              ? InkWell(
-                                  onTap: () {
-                                    setState(() {
-                                      selectedDay = null;
-                                      fromDate = '';
-                                      toDate = '';
-                                    });
-                                  },
-                                  child: const Text('Reset'))
-                              : InkWell(
-                                  onTap: () async {
-                                    var dateRange = await showDateRangePicker(
-                                      context: context,
-                                      firstDate: DateTime.now(),
-                                      lastDate: DateTime(2050),
-                                    );
-
-                                    setState(() {
-                                      durationDays =
-                                          dateRange?.duration.inDays ?? 0;
-
-                                      fromDate = convertDateToApiFormat(
-                                          dateRange?.start ?? DateTime.now());
-                                      if (dateRange?.end == null) {
-                                        toDate = '';
-                                      } else {
-                                        toDate = convertDateToApiFormat(
-                                            dateRange?.end ?? DateTime.now());
-                                      }
-                                      if (dateRange?.start == dateRange?.end) {
-                                        toDate = '';
-                                      }
-                                    });
-                                  },
-                                  child: const Icon(Icons.calendar_today)),
-                          const SizedBox(
-                            width: 15,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(
-                        height: 15,
-                      ),
-                      fromDate != ''
-                          ? const Offstage()
-                          : Column(
-                              children: [
-                                WeekdaySelector(
-                                  onChanged: (int day) {
-                                    final index = day % 7;
-
-                                    setState(() {
-                                      selectedDay = weekDaysName[index];
-
-                                      weekDayList[index] = !weekDayList[index];
-                                      if (weekDayList[index]) {
-                                        selectedWeekDaysNameList
-                                            .add(selectedDay!);
-                                      } else {
-                                        selectedWeekDaysNameList
-                                            .remove(selectedDay);
-                                      }
-
-                                      if (selectedWeekDaysNameList.length ==
-                                          7) {
-                                        allDays = true;
-                                        setState(() {});
-                                      } else {
-                                        allDays = false;
-                                        setState(() {});
-                                      }
-                                    });
-                                  },
-                                  values: weekDayList,
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.all(18.0),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                      const Text('All Days'),
-                                      CupertinoSwitch(
-                                        onChanged: (bool value) {
-                                          if (value) {
-                                            toggleWeekDays(true);
-                                          } else {
-                                            toggleWeekDays();
-                                          }
-                                          allDays = value;
-                                          setState(() {});
-                                        },
-                                        activeTrackColor: AppColors.primaryColor,
-                                        value: allDays,
-                                        // value: reminderController.allDaysSwitch,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          children: [
+                            const SizedBox(
+                              width: 15,
                             ),
-                      const SizedBox(
-                        height: 15,
-                      ),
-                      InkWell(
-                        onTap: () {
-                          bottomSheetForAlarmNames(context);
-                        },
-                        child: SizedBox(
-                          width: MediaQuery.of(context).size.width * 0.9,
-                          child: IgnorePointer(
-                            ignoring: true,
-                            child: TextField(
-                              decoration: const InputDecoration(
-                                hintText: 'Alarm Name',
-                                label: Text('Alarm Name'),
-                              ),
-                              controller: alarmController,
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.grey.shade700),
-                            ),
-                          ),
-                        ),
-                      ),
-                      SizedBox(
-                        height: 20.h,
-                      ),
-                      Card(
-                        elevation: 3,
-                        child: ListTile(
-                          onTap: () async {
-                            showModalBottomSheet(
-                                context: context,
-                                isScrollControlled: true,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(15.r),
-                                ),
-                                builder: (BuildContext context) {
-                                  return StatefulBuilder(
-                                    builder: (BuildContext context,
-                                        StateSetter setState) {
-                                      return Container(
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius: BorderRadius.only(
-                                              topLeft: Radius.circular(20.r),
-                                              topRight: Radius.circular(20.r),
+                            selectedWeekDaysNameList.isEmpty
+                                ? Text(
+                                    fromDate == ''
+                                        ? convertIntoWeekFormat(DateTime.now())
+                                        : fromDate +
+                                            (toDate == '' ? '' : ' - $toDate'),
+                                    style: TextStyle(
+                                        color: Colors.black, fontSize: 14.sp),
+                                  )
+                                : (fromDate == '' || toDate == ''
+                                    ? selectedWeekDaysNameList.length == 7
+                                        ? Text(
+                                            'Every Day',
+                                            style: TextStyle(
+                                                color: Colors.black,
+                                                fontSize: 14.sp),
+                                          )
+                                        : Expanded(
+                                            child: Wrap(
+                                              children: selectedWeekDaysNameList
+                                                  .map((e) => Text(
+                                                        '$e, ',
+                                                        style: TextStyle(
+                                                            color: Colors.black,
+                                                            fontSize: 14.sp),
+                                                      ))
+                                                  .toList(),
                                             ),
-                                          ),
-                                          child: Wrap(
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  Padding(
-                                                    padding: EdgeInsets.only(
-                                                        left: 15.w, top: 15.h),
-                                                    child: Text(
-                                                      "Snooze",
-                                                      style: TextStyle(
-                                                        fontSize: 18.sp,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              ListView.builder(
-                                                shrinkWrap: true,
-                                                physics:
-                                                    const NeverScrollableScrollPhysics(),
-                                                itemCount: snoozTime.length,
-                                                itemBuilder: (_, i) {
-                                                  return ListTile(
-                                                    onTap: (() {
-                                                      setState(() {
-                                                        selectedSnoozIndex = i;
-                                                        selectSnooz =
-                                                            snoozTime[i]['id']
-                                                                .toString();
-                                                      });
-                                                    }),
-                                                    selected:
-                                                        i == selectedSnoozIndex,
-                                                    title: Text(
-                                                        snoozTime[i]['value']),
-                                                  );
-                                                },
-                                              ),
-                                              Row(
-                                                children: [
-                                                  Padding(
-                                                    padding: EdgeInsets.only(
-                                                        left: 15.w, top: 15.h),
-                                                    child: Text(
-                                                      "Repeat",
-                                                      style: TextStyle(
-                                                        fontSize: 18.sp,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              ListView.builder(
-                                                shrinkWrap: true,
-                                                physics:
-                                                    const NeverScrollableScrollPhysics(),
-                                                itemCount: 5,
-                                                itemBuilder: (_, i) {
-                                                  return ListTile(
-                                                    onTap: (() {
-                                                      setState(() {
-                                                        selectedrepeatIndex = i;
-                                                        selectedRepeat =
-                                                            "${i + 1}";
-                                                      });
-                                                    }),
-                                                    selected: i ==
-                                                        selectedrepeatIndex,
-                                                    title: Text("${i + 1}"),
-                                                  );
-                                                },
-                                              )
-                                            ],
-                                          ));
+                                          )
+                                    : Text(
+                                        fromDate == ''
+                                            ? convertIntoWeekFormat(
+                                                DateTime.now())
+                                            : fromDate +
+                                                (toDate == ''
+                                                    ? ''
+                                                    : ' - $toDate'),
+                                        style: TextStyle(
+                                            color: Colors.black,
+                                            fontSize: 14.sp),
+                                      )),
+                            const Spacer(),
+                            (fromDate != '')
+                                ? InkWell(
+                                    onTap: () {
+                                      setState(() {
+                                        selectedDay = null;
+                                        fromDate = '';
+                                        toDate = '';
+                                      });
                                     },
-                                  );
-                                });
+                                    child: const Text('Reset'))
+                                : InkWell(
+                                    onTap: () async {
+                                      var dateRange = await showDateRangePicker(
+                                        context: context,
+                                        firstDate: DateTime.now(),
+                                        lastDate: DateTime(2050),
+                                      );
+
+                                      setState(() {
+                                        durationDays =
+                                            dateRange?.duration.inDays ?? 0;
+
+                                        fromDate = convertDateToApiFormat(
+                                            dateRange?.start ?? DateTime.now());
+                                        if (dateRange?.end == null) {
+                                          toDate = '';
+                                        } else {
+                                          toDate = convertDateToApiFormat(
+                                              dateRange?.end ?? DateTime.now());
+                                        }
+                                        if (dateRange?.start ==
+                                            dateRange?.end) {
+                                          toDate = '';
+                                        }
+                                      });
+                                    },
+                                    child: const Icon(Icons.calendar_today)),
+                            const SizedBox(
+                              width: 15,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(
+                          height: 15,
+                        ),
+                        fromDate != ''
+                            ? const Offstage()
+                            : Column(
+                                children: [
+                                  WeekdaySelector(
+                                    onChanged: (int day) {
+                                      final index = day % 7;
+
+                                      setState(() {
+                                        selectedDay = weekDaysName[index];
+
+                                        weekDayList[index] =
+                                            !weekDayList[index];
+                                        if (weekDayList[index]) {
+                                          selectedWeekDaysNameList
+                                              .add(selectedDay!);
+                                        } else {
+                                          selectedWeekDaysNameList
+                                              .remove(selectedDay);
+                                        }
+
+                                        if (selectedWeekDaysNameList.length ==
+                                            7) {
+                                          allDays = true;
+                                          setState(() {});
+                                        } else {
+                                          allDays = false;
+                                          setState(() {});
+                                        }
+                                      });
+                                    },
+                                    values: weekDayList,
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.all(18.0),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: [
+                                        const Text('All Days'),
+                                        CupertinoSwitch(
+                                          onChanged: (bool value) {
+                                            if (value) {
+                                              toggleWeekDays(true);
+                                            } else {
+                                              toggleWeekDays();
+                                            }
+                                            allDays = value;
+                                            setState(() {});
+                                          },
+                                          activeTrackColor:
+                                              AppColors.primaryColor,
+                                          value: allDays,
+                                          // value: reminderController.allDaysSwitch,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                        const SizedBox(
+                          height: 15,
+                        ),
+                        InkWell(
+                          onTap: () {
+                            bottomSheetForAlarmNames(context);
                           },
-                          leading: const Icon(Icons.snooze_outlined),
-                          title: const Text('Snooze'),
-                          trailing: CupertinoSwitch(
-                            activeTrackColor: AppColors.primaryColor,
-                            value: snooz,
-                            onChanged: (bool value) {
-                              snooz = value;
-                              setState(() {});
-                            },
+                          child: SizedBox(
+                            width: MediaQuery.of(context).size.width * 0.9,
+                            child: IgnorePointer(
+                              ignoring: true,
+                              child: TextField(
+                                decoration: const InputDecoration(
+                                  hintText: 'Alarm Name',
+                                  label: Text('Alarm Name'),
+                                ),
+                                controller: alarmController,
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey.shade700),
+                              ),
+                            ),
                           ),
                         ),
-                      )
-                    ],
+                        SizedBox(
+                          height: 20.h,
+                        ),
+                        Card(
+                          elevation: 3,
+                          child: ListTile(
+                            onTap: () async {
+                              showModalBottomSheet(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(15.r),
+                                  ),
+                                  builder: (BuildContext context) {
+                                    return StatefulBuilder(
+                                      builder: (BuildContext context,
+                                          StateSetter setState) {
+                                        return Container(
+                                            decoration: BoxDecoration(
+                                              color: Colors.white,
+                                              borderRadius: BorderRadius.only(
+                                                topLeft: Radius.circular(20.r),
+                                                topRight: Radius.circular(20.r),
+                                              ),
+                                            ),
+                                            child: Wrap(
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    Padding(
+                                                      padding: EdgeInsets.only(
+                                                          left: 15.w,
+                                                          top: 15.h),
+                                                      child: Text(
+                                                        "Snooze",
+                                                        style: TextStyle(
+                                                          fontSize: 18.sp,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                ListView.builder(
+                                                  shrinkWrap: true,
+                                                  physics:
+                                                      const NeverScrollableScrollPhysics(),
+                                                  itemCount: snoozTime.length,
+                                                  itemBuilder: (_, i) {
+                                                    return ListTile(
+                                                      onTap: (() {
+                                                        setState(() {
+                                                          selectedSnoozIndex =
+                                                              i;
+                                                          selectSnooz =
+                                                              snoozTime[i]['id']
+                                                                  .toString();
+                                                        });
+                                                      }),
+                                                      selected: i ==
+                                                          selectedSnoozIndex,
+                                                      title: Text(snoozTime[i]
+                                                          ['value']),
+                                                    );
+                                                  },
+                                                ),
+                                                Row(
+                                                  children: [
+                                                    Padding(
+                                                      padding: EdgeInsets.only(
+                                                          left: 15.w,
+                                                          top: 15.h),
+                                                      child: Text(
+                                                        "Repeat",
+                                                        style: TextStyle(
+                                                          fontSize: 18.sp,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                ListView.builder(
+                                                  shrinkWrap: true,
+                                                  physics:
+                                                      const NeverScrollableScrollPhysics(),
+                                                  itemCount: 5,
+                                                  itemBuilder: (_, i) {
+                                                    return ListTile(
+                                                      onTap: (() {
+                                                        setState(() {
+                                                          selectedrepeatIndex =
+                                                              i;
+                                                          selectedRepeat =
+                                                              "${i + 1}";
+                                                        });
+                                                      }),
+                                                      selected: i ==
+                                                          selectedrepeatIndex,
+                                                      title: Text("${i + 1}"),
+                                                    );
+                                                  },
+                                                )
+                                              ],
+                                            ));
+                                      },
+                                    );
+                                  });
+                            },
+                            leading: const Icon(Icons.snooze_outlined),
+                            title: const Text('Snooze'),
+                            trailing: CupertinoSwitch(
+                              activeTrackColor: AppColors.primaryColor,
+                              value: snooz,
+                              onChanged: (bool value) {
+                                snooz = value;
+                                setState(() {});
+                              },
+                            ),
+                          ),
+                        )
+                      ],
+                    ),
                   ),
                 ),
-              )
+              ),
             ],
           ),
         ),
@@ -482,8 +580,8 @@ class _NewAddedReminderScreenState extends State<NewAddedReminderScreen> {
                   onPressed: () {
                     Get.back();
                   },
-                  style:
-                      ElevatedButton.styleFrom(backgroundColor: Colors.grey.shade600),
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey.shade600),
                   child: Padding(
                     padding: EdgeInsets.all(5.r),
                     child: Text(
@@ -500,10 +598,12 @@ class _NewAddedReminderScreenState extends State<NewAddedReminderScreen> {
                 child: ElevatedButton(
                   onPressed: () async {
                     formatDescide();
+                    final saveFuture =
+                        Future<bool>.delayed(Duration.zero, () => setAlarm());
                     final response = await showDialog(
                       context: context,
                       builder: (context) => FutureProgressDialog(
-                        setAlarm(),
+                        saveFuture,
                         message: const Text('Setting alarm ...'),
                       ),
                     );
@@ -512,7 +612,8 @@ class _NewAddedReminderScreenState extends State<NewAddedReminderScreen> {
 
                     // }
                   },
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                  style:
+                      ElevatedButton.styleFrom(backgroundColor: Colors.green),
                   child: Padding(
                     padding: EdgeInsets.all(5.r),
                     child: Text(

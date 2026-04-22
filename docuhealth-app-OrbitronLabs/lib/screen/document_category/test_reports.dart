@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:docuhealth/screen/document_category/my_documents.dart';
 import 'package:docuhealth/screen/files/files_screen.dart';
 import 'package:docuhealth/screen/document_category/share_document_dialog.dart';
+import 'package:docuhealth/helper/get_storage_helper.dart';
 import 'package:docuhealth/services/base_client.dart';
 import 'package:docuhealth/theme.dart';
 import 'package:flutter/material.dart';
@@ -38,6 +41,7 @@ class TestReports extends StatefulWidget {
 
 class _PharmacyRecordState extends State<TestReports>
     with SingleTickerProviderStateMixin {
+  static const String _localUploadsKey = 'local_uploaded_documents';
   bool isLoading = true;
   BaseClient baseClient = BaseClient();
   List listData = [];
@@ -61,25 +65,118 @@ class _PharmacyRecordState extends State<TestReports>
   Future<dynamic> getData(BuildContext context, int currentPage) async {
     isLoading = true;
     setState(() {});
-    final resp = await baseClient.get(
-        'folders-and-files?category=${widget.categoryName}&sort_by=$sortBy&page=$currentPage&search=$searchKey',
-        true);
-    if (resp['success']) {
-      if (resp["data"]["data_records"] != null) {
-        double pageCount = resp["data"]["data_records"]['total_records'] /
-            resp["data"]["data_records"]['limit'];
+    try {
+      final resp = await baseClient.get(
+          'folders-and-files?category=${widget.categoryName}&sort_by=$sortBy&page=$currentPage&search=$searchKey',
+          true);
+      final serverItems = <dynamic>[];
+      if (resp['success']) {
+        if (resp["data"]["data_records"] != null) {
+          double pageCount = resp["data"]["data_records"]['total_records'] /
+              resp["data"]["data_records"]['limit'];
 
-        totalpage = pageCount.ceil();
+          totalpage = pageCount.ceil();
+        }
+        serverItems.addAll((resp['data']['data'] as List?) ?? <dynamic>[]);
       }
-      return resp['data']['data'];
+
+      final localItems =
+          currentPage == 1 ? _getLocalItemsForCategory() : <dynamic>[];
+      final merged = <dynamic>[...localItems, ...serverItems];
+      return _sortAndFilter(merged);
+    } catch (_) {
+      totalpage = 1;
+      final localItems =
+          currentPage == 1 ? _getLocalItemsForCategory() : <dynamic>[];
+      return _sortAndFilter(localItems);
     }
-    isLoading = false;
-    setState(() {});
+  }
+
+  List<dynamic> _sortAndFilter(List<dynamic> data) {
+    var out = data;
+    if (searchKey.trim().isNotEmpty) {
+      final q = searchKey.toLowerCase();
+      out = out
+          .where((e) => (e['name'] ?? '').toString().toLowerCase().contains(q))
+          .toList();
+    }
+
+    if (sortBy == 'name') {
+      out.sort((a, b) => (a['name'] ?? '')
+          .toString()
+          .toLowerCase()
+          .compareTo((b['name'] ?? '').toString().toLowerCase()));
+    } else if (sortBy == 'date') {
+      out.sort((a, b) => (b['created_at'] ?? '')
+          .toString()
+          .compareTo((a['created_at'] ?? '').toString()));
+    }
+    return out;
+  }
+
+  List<dynamic> _getLocalItemsForCategory() {
+    final raw = (box.read(_localUploadsKey) as List?) ?? <dynamic>[];
+    return raw.whereType<Map>().where((item) {
+      return (item['category'] ?? '').toString() == widget.categoryName;
+    }).map((item) {
+      final files = (item['files'] as List?) ?? <dynamic>[];
+      final firstPath = files.isNotEmpty ? files.first.toString() : '';
+      return <String, dynamic>{
+        'id': -((item['id'] is int
+            ? item['id'] as int
+            : DateTime.now().millisecondsSinceEpoch)),
+        'local_source_id': item['id'],
+        'tag': 'file',
+        'bookmark': 'No',
+        'is_local': true,
+        'name': (item['title'] ?? 'Local Document').toString(),
+        'remarks': (item['remarks'] ?? '').toString(),
+        'created_at': (item['created_at'] ?? '').toString(),
+        'file': firstPath,
+        'thumbnail_file': firstPath,
+        'file_type': _guessFileType(firstPath),
+      };
+    }).toList();
+  }
+
+  String _guessFileType(String path) {
+    final p = path.toLowerCase();
+    if (p.endsWith('.jpg') ||
+        p.endsWith('.jpeg') ||
+        p.endsWith('.png') ||
+        p.endsWith('.webp')) {
+      return 'image';
+    }
+    return 'pdf';
+  }
+
+  bool _isLocalItem(Map item) => item['is_local'] == true;
+
+  Future<void> _deleteLocalFile(dynamic sourceId) async {
+    final raw = (box.read(_localUploadsKey) as List?) ?? <dynamic>[];
+    raw.removeWhere((e) => e is Map && e['id'] == sourceId);
+    await box.write(_localUploadsKey, raw);
+    await _onRefresh();
+  }
+
+  void _openLocalImagePreview(String path, String title) {
+    Get.to(
+      () => Scaffold(
+        appBar: AppBar(title: Text(title.isEmpty ? 'Image Preview' : title)),
+        body: Center(
+          child: InteractiveViewer(
+            minScale: 0.5,
+            maxScale: 5,
+            child: Image.file(File(path)),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _onRefresh() async {
     var data = await getData(context, currentPage);
-    listData = data;
+    listData = (data as List?) ?? <dynamic>[];
     if (mounted) setState(() {});
     refreshController.refreshCompleted();
   }
@@ -90,9 +187,10 @@ class _PharmacyRecordState extends State<TestReports>
       refreshController.loadNoData();
     } else {
       var data = await getData(context, currentPage);
-      for (var i = 0; i < data.length; i++) {
-        if (data[i]['tag'] != 'folder') {
-          listData.add(data[i]);
+      final rows = (data as List?) ?? <dynamic>[];
+      for (var i = 0; i < rows.length; i++) {
+        if (rows[i]['tag'] != 'folder') {
+          listData.add(rows[i]);
         }
       }
       if (mounted) setState(() {});
@@ -113,7 +211,8 @@ class _PharmacyRecordState extends State<TestReports>
     }
   }
 
-  Future<bool> onRenamePress(int id, String buttonType, String nameController) async {
+  Future<bool> onRenamePress(
+      int id, String buttonType, String nameController) async {
     var data = buttonType == "folder"
         ? {"folder_id": id.toString(), "name": nameController}
         : {
@@ -149,7 +248,8 @@ class _PharmacyRecordState extends State<TestReports>
     }
   }
 
-  Future<bool> onBookMarkButtonPress(int id, String operation, String documentType) async {
+  Future<bool> onBookMarkButtonPress(
+      int id, String operation, String documentType) async {
     final response = await baseClient.get(
         'bookmark/$operation?id=$id&type=$documentType', true);
     if (response['success']) {
@@ -412,6 +512,8 @@ class _PharmacyRecordState extends State<TestReports>
                 shrinkWrap: true,
                 itemCount: listData.length,
                 itemBuilder: (_, i) {
+                  final isLocal =
+                      _isLocalItem(Map<String, dynamic>.from(listData[i]));
                   return Card(
                     color: AppColors.whitebgColor,
                     shape: RoundedRectangleBorder(
@@ -428,6 +530,21 @@ class _PharmacyRecordState extends State<TestReports>
                             fileId: widget.fileId,
                             categoryName: listData[i]['belongs_to'],
                             documentType: widget.documentType,
+                          ));
+                        } else if (isLocal &&
+                            listData[i]['file_type'] == "image") {
+                          _openLocalImagePreview(
+                            listData[i]['file'].toString(),
+                            (listData[i]['name'] ?? '').toString(),
+                          );
+                        } else if (isLocal) {
+                          Get.to(PdfPreviewScreen(
+                            isFromFile: true,
+                            documentUrl: File(listData[i]['file'].toString()),
+                            fileId: 0,
+                            fileName: listData[i]['name'] ?? '',
+                            remarks: listData[i]['remarks'] ?? '',
+                            isNetworkImage: false,
                           ));
                         } else if (listData[i]['file_type'] == "image") {
                           Get.to(ImagePreviewScreen(
@@ -464,8 +581,12 @@ class _PharmacyRecordState extends State<TestReports>
                                           : 'assets/icons/blood-pressure-file.png'),
                                 )
                               : DecorationImage(
-                                  image: NetworkImage(
-                                      listData[i]['thumbnail_file']),
+                                  image: isLocal
+                                      ? FileImage(File(
+                                              listData[i]['thumbnail_file']))
+                                          as ImageProvider
+                                      : NetworkImage(
+                                          listData[i]['thumbnail_file']),
                                   fit: BoxFit.cover,
                                 ),
                         ),
@@ -511,82 +632,101 @@ class _PharmacyRecordState extends State<TestReports>
                         width: 100,
                         child: Row(
                           children: [
-                            IconButton(
-                              onPressed: () async {
-                                if (listData[i]['tag'] == "folder") {
-                                  if (listData[i]['bookmark'] == "No") {
-                                    await showDialog(
-                                      context: context,
-                                      builder: (context) =>
-                                          FutureProgressDialog(
-                                        onBookMarkButtonPress(
-                                            listData[i]['id'], 'add', 'folder'),
-                                        message: const Text(
-                                          'Please wait...',
-                                        ),
-                                      ),
-                                    ).whenComplete(() => _onRefresh());
-                                  } else {
-                                    await showDialog(
-                                      context: context,
-                                      builder: (context) =>
-                                          FutureProgressDialog(
-                                        onBookMarkButtonPress(
-                                          listData[i]['id'],
-                                          'remove',
-                                          'folder',
-                                        ),
-                                        message: const Text(
-                                          'Please wait...',
-                                        ),
-                                      ),
-                                    ).whenComplete(() => _onRefresh());
-                                  }
-                                } else {
-                                  if (listData[i]['bookmark'] == "No") {
-                                    await showDialog(
-                                      context: context,
-                                      builder: (context) =>
-                                          FutureProgressDialog(
-                                        onBookMarkButtonPress(
-                                            listData[i]['id'], 'add', 'file'),
-                                        message: const Text(
-                                          'Please wait...',
-                                        ),
-                                      ),
-                                    ).whenComplete(() => _onRefresh());
-                                  } else {
-                                    await showDialog(
-                                      context: context,
-                                      builder: (context) =>
-                                          FutureProgressDialog(
-                                        onBookMarkButtonPress(
-                                          listData[i]['id'],
-                                          'remove',
-                                          'file',
-                                        ),
-                                        message: const Text(
-                                          'Please wait...',
-                                        ),
-                                      ),
-                                    ).whenComplete(() => _onRefresh());
-                                  }
-                                }
-                              },
-                              icon: listData[i]['bookmark'] == "No"
-                                  ? const Icon(
-                                      Icons.bookmark_outline,
-                                    )
-                                  : const Icon(
-                                      Icons.bookmark,
+                            isLocal
+                                ? IconButton(
+                                    onPressed: null,
+                                    icon: Icon(
+                                      Icons.cloud_off,
+                                      color: AppColors.lightGreyTextColor,
                                     ),
-                            ),
+                                  )
+                                : IconButton(
+                                    onPressed: () async {
+                                      if (listData[i]['tag'] == "folder") {
+                                        if (listData[i]['bookmark'] == "No") {
+                                          await showDialog(
+                                            context: context,
+                                            builder: (context) =>
+                                                FutureProgressDialog(
+                                              onBookMarkButtonPress(
+                                                  listData[i]['id'],
+                                                  'add',
+                                                  'folder'),
+                                              message: const Text(
+                                                'Please wait...',
+                                              ),
+                                            ),
+                                          ).whenComplete(() => _onRefresh());
+                                        } else {
+                                          await showDialog(
+                                            context: context,
+                                            builder: (context) =>
+                                                FutureProgressDialog(
+                                              onBookMarkButtonPress(
+                                                listData[i]['id'],
+                                                'remove',
+                                                'folder',
+                                              ),
+                                              message: const Text(
+                                                'Please wait...',
+                                              ),
+                                            ),
+                                          ).whenComplete(() => _onRefresh());
+                                        }
+                                      } else {
+                                        if (listData[i]['bookmark'] == "No") {
+                                          await showDialog(
+                                            context: context,
+                                            builder: (context) =>
+                                                FutureProgressDialog(
+                                              onBookMarkButtonPress(
+                                                  listData[i]['id'],
+                                                  'add',
+                                                  'file'),
+                                              message: const Text(
+                                                'Please wait...',
+                                              ),
+                                            ),
+                                          ).whenComplete(() => _onRefresh());
+                                        } else {
+                                          await showDialog(
+                                            context: context,
+                                            builder: (context) =>
+                                                FutureProgressDialog(
+                                              onBookMarkButtonPress(
+                                                listData[i]['id'],
+                                                'remove',
+                                                'file',
+                                              ),
+                                              message: const Text(
+                                                'Please wait...',
+                                              ),
+                                            ),
+                                          ).whenComplete(() => _onRefresh());
+                                        }
+                                      }
+                                    },
+                                    icon: listData[i]['bookmark'] == "No"
+                                        ? const Icon(
+                                            Icons.bookmark_outline,
+                                          )
+                                        : const Icon(
+                                            Icons.bookmark,
+                                          ),
+                                  ),
                             PopupMenuButton(
                               icon: const Icon(
                                 Icons.more_vert,
                               ),
                               elevation: 2,
                               onSelected: (v) async {
+                                if (isLocal) {
+                                  if (v == 99) {
+                                    await _deleteLocalFile(
+                                        listData[i]['local_source_id']);
+                                  }
+                                  return;
+                                }
                                 if (listData[i]['tag'] == "folder") {
                                   if (v == 4) {
                                     Get.defaultDialog(
@@ -614,7 +754,8 @@ class _PharmacyRecordState extends State<TestReports>
                                             ).whenComplete(() => _onRefresh());
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: AppColors.primaryColor,
+                                            backgroundColor:
+                                                AppColors.primaryColor,
                                           ),
                                           child: const Text('Yes'),
                                         ),
@@ -627,7 +768,8 @@ class _PharmacyRecordState extends State<TestReports>
                                             Get.back();
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.grey.shade400,
+                                            backgroundColor:
+                                                Colors.grey.shade400,
                                           ),
                                           child: const Text('Cancel'),
                                         ),
@@ -674,7 +816,8 @@ class _PharmacyRecordState extends State<TestReports>
                                             }
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: AppColors.primaryColor,
+                                            backgroundColor:
+                                                AppColors.primaryColor,
                                           ),
                                           child: const Text('Continue'),
                                         ),
@@ -687,7 +830,8 @@ class _PharmacyRecordState extends State<TestReports>
                                             Get.back();
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.grey.shade400,
+                                            backgroundColor:
+                                                Colors.grey.shade400,
                                           ),
                                           child: const Text('Cancel'),
                                         ),
@@ -754,7 +898,8 @@ class _PharmacyRecordState extends State<TestReports>
                                             ).whenComplete(() => _onRefresh());
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: AppColors.primaryColor,
+                                            backgroundColor:
+                                                AppColors.primaryColor,
                                           ),
                                           child: const Text('Yes'),
                                         ),
@@ -767,7 +912,8 @@ class _PharmacyRecordState extends State<TestReports>
                                             Get.back();
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.grey.shade400,
+                                            backgroundColor:
+                                                Colors.grey.shade400,
                                           ),
                                           child: const Text('Cancel'),
                                         ),
@@ -832,7 +978,8 @@ class _PharmacyRecordState extends State<TestReports>
                                             }
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: AppColors.primaryColor,
+                                            backgroundColor:
+                                                AppColors.primaryColor,
                                           ),
                                           child: const Text('Continue'),
                                         ),
@@ -845,7 +992,8 @@ class _PharmacyRecordState extends State<TestReports>
                                             Get.back();
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.grey.shade400,
+                                            backgroundColor:
+                                                Colors.grey.shade400,
                                           ),
                                           child: const Text('Cancel'),
                                         ),
@@ -907,31 +1055,43 @@ class _PharmacyRecordState extends State<TestReports>
                                         child: Text('Share'),
                                       )
                                     ]
-                                  : <PopupMenuEntry>[
-                                      const PopupMenuItem(
-                                        value: 1,
-                                        child: Text('Copy'),
-                                      ),
-                                      const PopupMenuItem(
-                                        value: 4,
-                                        child: Text(
-                                          'Delete',
-                                          style: TextStyle(color: Colors.red),
-                                        ),
-                                      ),
-                                      const PopupMenuItem(
-                                        value: 3,
-                                        child: Text('Move'),
-                                      ),
-                                      const PopupMenuItem(
-                                        value: 2,
-                                        child: Text('Rename'),
-                                      ),
-                                      const PopupMenuItem(
-                                        value: 5,
-                                        child: Text('Share'),
-                                      )
-                                    ],
+                                  : isLocal
+                                      ? <PopupMenuEntry>[
+                                          const PopupMenuItem(
+                                            value: 99,
+                                            child: Text(
+                                              'Delete Local',
+                                              style:
+                                                  TextStyle(color: Colors.red),
+                                            ),
+                                          ),
+                                        ]
+                                      : <PopupMenuEntry>[
+                                          const PopupMenuItem(
+                                            value: 1,
+                                            child: Text('Copy'),
+                                          ),
+                                          const PopupMenuItem(
+                                            value: 4,
+                                            child: Text(
+                                              'Delete',
+                                              style:
+                                                  TextStyle(color: Colors.red),
+                                            ),
+                                          ),
+                                          const PopupMenuItem(
+                                            value: 3,
+                                            child: Text('Move'),
+                                          ),
+                                          const PopupMenuItem(
+                                            value: 2,
+                                            child: Text('Rename'),
+                                          ),
+                                          const PopupMenuItem(
+                                            value: 5,
+                                            child: Text('Share'),
+                                          )
+                                        ],
                             ),
                           ],
                         ),
