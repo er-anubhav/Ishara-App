@@ -115,7 +115,7 @@ class PostController extends Controller
             }
             $file_name = date('ymdhis').'_BLOG.'.$ext;
 
-            $file->move($targetDir, $file_name);
+            \App\Library\StorageHelper::storeUploadedFile($file, $targetDir, $file_name);
         }
             
         $data = [
@@ -206,7 +206,7 @@ class PostController extends Controller
                 }
                 $file_name = date('ymdhis').'_BLOG.'.$ext;
 
-                $file->move($targetDir, $file_name);
+                \App\Library\StorageHelper::storeUploadedFile($file, $targetDir, $file_name);
                 $post->image = $file_name;
             }
                 

@@ -16,7 +16,9 @@ use App\Library\Image;
 use App\Models\User;
 use App\Models\Share;
 use App\Models\File as FileModal;
+use App\Models\FileModel as SecureFile;
 use App\Models\Folder;
+use Illuminate\Support\Facades\Storage;
 use File;
 
 class FileController extends Controller
@@ -62,10 +64,10 @@ class FileController extends Controller
                 $thumbnail_file_name_with_target_dir = "$targetThumbnailDir/$file_name";
                 $file_name = file_exists($thumbnail_file_name_with_target_dir) ? $file_name.'_copy_'.date('ymdhis').".$ext" : $file_name ;
 
-                $file->move($targetDir, $file_name);
+                \App\Library\StorageHelper::storeUploadedFile($file, $targetDir, $file_name);
                 $this->resizeImage("$targetDir/$file_name", "$targetThumbnailDir/$file_name");
             }else{
-                $file->move($targetDir, $file_name);
+                \App\Library\StorageHelper::storeUploadedFile($file, $targetDir, $file_name);
             }
             
             $data['file'] = DisplayPath::common_storage()."/$folder/$file_name";
@@ -239,13 +241,20 @@ class FileController extends Controller
             if ($file) {
 
                 if ($file->profile_id == $request->profile->id) {
-                     
+
+                    $secureFile = SecureFile::where('user_id', $request->profile->user_id)
+                        ->where('original_name', $file->name)
+                        ->latest('id')
+                        ->first();
+
+                    if ($secureFile && config('filesystems.default') === 's3') {
+                        return Storage::disk('s3')->response($secureFile->s3_path, $file->name);
+                    }
+
                     $folder = $this->profileFolderName($request->profile->id);
-                        
                     $rootDir = $targetDir = TargetPath::common_storage($folder);
                     $file_with_current_dir = "$rootDir/".$file->name;
 
-                    //If file already have in another folder.
                     if ($file->folder) {
                         $targetDir = "$targetDir/".$file->folder->name;
                         $file_with_current_dir = "$targetDir/".$file->name;

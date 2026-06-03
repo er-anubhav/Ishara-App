@@ -7,8 +7,11 @@ use App\Models\Specialization;
 use App\Models\Bookmark;
 use App\Library\DisplayPath;
 use App\Library\FileAndFolder;
+use App\Models\UserProfile;
+use App\Models\FileModel;
 use DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 
 class Beautify
 {
@@ -208,6 +211,12 @@ class Beautify
 
         $files = [];
         $targetDir = DisplayPath::common_storage($this->profileFolderName($profile_id)); 
+        $s3Enabled = (config('filesystems.default') === 's3') && config('filesystems.disks.s3.bucket');
+        $userId = null;
+
+        if ($s3Enabled) {
+            $userId = UserProfile::where('id', $profile_id)->value('user_id');
+        }
 
         $bookmark_ids = [];
         if ($request == 'Unknown') {
@@ -230,12 +239,41 @@ class Beautify
                     $folder = $value->folder_name.'/';
                 }
                
-                $value->file = "$targetDir/$folder".$value->name;
+                $value->file = DisplayPath::secure_file($value->id);
 
                 if ($value->file_type != 'image') {
                     $value->thumbnail_file = DisplayPath::pdf_icon();
                 }else{
-                    $value->thumbnail_file = "$targetDir/$folder".'thumbnail/'.$value->name;
+                    $value->thumbnail_file = DisplayPath::secure_file($value->id);
+                }
+
+                // When S3 is enabled, return temporary signed URLs directly so
+                // mobile clients can render/open files without adding auth headers.
+                if ($s3Enabled && $userId) {
+                    $secureFile = FileModel::where('user_id', $userId)
+                        ->where('original_name', $value->name)
+                        ->latest('id')
+                        ->first();
+
+                    if ($secureFile) {
+                        try {
+                            $value->file = Storage::disk('s3')->temporaryUrl(
+                                $secureFile->s3_path,
+                                now()->addHours(24)
+                            );
+
+                            if ($value->file_type == 'image') {
+                                $thumbPath = str_replace('/'.$value->name, '/thumbnail/'.$value->name, $secureFile->s3_path);
+                                if (Storage::disk('s3')->exists($thumbPath)) {
+                                    $value->thumbnail_file = Storage::disk('s3')->temporaryUrl($thumbPath, now()->addHours(24));
+                                } else {
+                                    $value->thumbnail_file = $value->file;
+                                }
+                            }
+                        } catch (\Exception $e) {
+                            // Keep fallback secure endpoint URL.
+                        }
+                    }
                 }
                 
 
@@ -269,12 +307,12 @@ class Beautify
                     $folder = $value->folder_name.'/';
                 }
                
-                $value->file = "$targetDir/$folder".$value->name;
+                $value->file = DisplayPath::secure_file($value->id);
 
                 if ($value->file_type != 'image') {
                     $value->thumbnail_file = DisplayPath::pdf_icon();
                 }else{
-                    $value->thumbnail_file = "$targetDir/$folder".'thumbnail/'.$value->name;
+                    $value->thumbnail_file = DisplayPath::secure_file($value->id);
                 }
 
                 unset($value->folder_id, $value->shared_by, $value->folder_name, $value->profile_id);

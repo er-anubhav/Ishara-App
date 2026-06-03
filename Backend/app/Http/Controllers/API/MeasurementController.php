@@ -84,7 +84,7 @@ class MeasurementController extends Controller
                         File::makeDirectory($targetDir, 0777, true, true);
                     }
                     $file_name = strtoupper($request->category).'_MEASUREMENT_'.date('ymdhis').'.'.$ext;
-                    $file->move($targetDir, $file_name);
+                    \App\Library\StorageHelper::storeUploadedFile($file, $targetDir, $file_name);
                 }
 
                 $date = date('Y-m-d', strtotime($request->date));

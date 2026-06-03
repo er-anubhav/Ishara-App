@@ -90,7 +90,7 @@ class BannerController extends Controller
             }
             $file_name = date('ymdhis').'_BANNER.'.$ext;
 
-            $file->move($targetDir, $file_name);
+            \App\Library\StorageHelper::storeUploadedFile($file, $targetDir, $file_name);
             
             $data = [
                 'image' => $file_name,
@@ -180,7 +180,7 @@ class BannerController extends Controller
             }
             $file_name = date('ymdhis').'_BANNER';
 
-            $file->move($targetDir, $file_name);
+            \App\Library\StorageHelper::storeUploadedFile($file, $targetDir, $file_name);
 
             $data['image'] = $file_name;
         }

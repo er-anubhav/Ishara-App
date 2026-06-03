@@ -111,7 +111,7 @@ class CategoryController extends Controller
             }
             $file_name = date('ymdhis').'_CATEGORY.'.$ext;
 
-            $file->move($targetDir, $file_name);
+            \App\Library\StorageHelper::storeUploadedFile($file, $targetDir, $file_name);
         }
 
         $data = [
@@ -191,7 +191,7 @@ class CategoryController extends Controller
             }
             $file_name = date('ymdhis').'_CATEGORY.'.$ext;
 
-            $file->move($targetDir, $file_name);
+            \App\Library\StorageHelper::storeUploadedFile($file, $targetDir, $file_name);
 
             $data['icon'] = $file_name;
         }

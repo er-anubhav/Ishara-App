@@ -22,6 +22,7 @@ use App\Http\Controllers\API\ShareController;
 use App\Http\Controllers\API\DeleteAccountController;
 use App\Http\Controllers\API\ReminderCronController;
 use App\Http\Controllers\API\DeviceVitalController;
+use App\Http\Controllers\API\FileRetrievalController;
 
 /*
 |--------------------------------------------------------------------------
@@ -108,6 +109,10 @@ Route::prefix('v1')->group(function () {
         Route::post('file/move', [FileController::class, 'move']);
         Route::post('file/copy', [FileController::class, 'copy']);
         Route::get('file/delete/{file_id}', [FileController::class, 'delete']);
+
+        // Secure file retrieval (user-isolated with signed URLs)
+        Route::get('files/{fileId}/download-url', [FileRetrievalController::class, 'getDownloadUrl']);
+        Route::get('my-files', [FileRetrievalController::class, 'listMyFiles']);
 
         // Reminder.
         Route::post('reminders', [ReminderController::class, 'store']);

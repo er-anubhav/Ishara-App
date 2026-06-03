@@ -367,7 +367,7 @@ class ProfileController extends Controller
 
                     File::makeDirectory($targetDir, 0777, true, true);
                 }
-                $file->move($targetDir, $file_name);
+                \App\Library\StorageHelper::storeUploadedFile($file, $targetDir, $file_name);
 
                 $user_profile->icon = $file_name;
             }

@@ -2,10 +2,15 @@
 
 namespace App\Library;
 
+use Illuminate\Support\Facades\Storage;
+
 class DisplayPath {
 
     public static function user_display_image()
     {
+        if (config('filesystems.default') === 's3' && config('filesystems.disks.s3.bucket')) {
+            return rtrim(Storage::disk('s3')->url('app/users/display-picture'), '/') . '/';
+        }
         return url('app/users/display-picture').'/';
     }
 
@@ -16,16 +21,28 @@ class DisplayPath {
 
     public static function banner($path = '')
     {
+        if (config('filesystems.default') === 's3' && config('filesystems.disks.s3.bucket')) {
+            $key = trim("app/banners/" . $path, '/');
+            return Storage::disk('s3')->url($key);
+        }
         return url('app/banners')."/$path";
     }
 
     public static function category_icon($path = '')
     {
+        if (config('filesystems.default') === 's3' && config('filesystems.disks.s3.bucket')) {
+            $key = trim("app/category-icon/" . $path, '/');
+            return Storage::disk('s3')->url($key);
+        }
         return url('app/category-icon')."/$path";
     }
 
     public static function specialization_icon($path = '')
     {
+        if (config('filesystems.default') === 's3' && config('filesystems.disks.s3.bucket')) {
+            $key = trim("app/specialization-icon/" . $path, '/');
+            return Storage::disk('s3')->url($key);
+        }
         return url('app/specialization-icon')."/$path";
     }
 
@@ -51,6 +68,13 @@ class DisplayPath {
 
     public static function user_profile_icon($path = '')
     {
+        if (config('filesystems.default') === 's3' && config('filesystems.disks.s3.bucket')) {
+            if ($path !== '') {
+                $key = trim("app/images/icon/" . $path, '/');
+                return Storage::disk('s3')->url($key);
+            }
+            return rtrim(Storage::disk('s3')->url('app/images/icon'), '/');
+        }
         if ($path !== '') {
             return url('app/images/icon').'/'.$path;
         }
@@ -59,6 +83,13 @@ class DisplayPath {
 
     public static function measurement_attachment($path = '')
     {
+        if (config('filesystems.default') === 's3' && config('filesystems.disks.s3.bucket')) {
+            if ($path !== '') {
+                $key = trim($path . "/measurement-attachment", '/');
+                return Storage::disk('s3')->url($key);
+            }
+            return rtrim(Storage::disk('s3')->url('app/measurement-attachment'), '/');
+        }
         if ($path !== '') {
             return url('app')."/$path/measurement-attachment";
         }
@@ -67,6 +98,13 @@ class DisplayPath {
 
     public static function common_storage($path = '')
     {
+        if (config('filesystems.default') === 's3' && config('filesystems.disks.s3.bucket')) {
+            if ($path !== '') {
+                $key = trim("app/" . $path, '/');
+                return Storage::disk('s3')->url($key);
+            }
+            return rtrim(Storage::disk('s3')->url('app'), '/');
+        }
         if ($path !== '') {
             return url('app').'/'.$path;
         }
@@ -75,10 +113,22 @@ class DisplayPath {
 
     public static function blog_post($path = '')
     {
+        if (config('filesystems.default') === 's3' && config('filesystems.disks.s3.bucket')) {
+            if ($path !== '') {
+                $key = trim("app/images/blog/" . $path, '/');
+                return Storage::disk('s3')->url($key);
+            }
+            return rtrim(Storage::disk('s3')->url('app/images/blog'), '/');
+        }
         if ($path !== '') {
             return url('app/images/blog').'/'.$path;
         }
         return url('app/images/blog');
+    }
+
+    public static function secure_file($fileId)
+    {
+        return url('api/v1/file/'.$fileId.'/download');
     }
 
     public static function no_image()

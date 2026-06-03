@@ -95,7 +95,7 @@ class SpecializationController extends Controller
             }
             $file_name = date('ymdhis').'_SPECIALIZATION.'.$ext;
 
-            $file->move($targetDir, $file_name);
+            \App\Library\StorageHelper::storeUploadedFile($file, $targetDir, $file_name);
         }
 
         $data = [
@@ -175,7 +175,7 @@ class SpecializationController extends Controller
             }
             $file_name = date('ymdhis').'_SPECIALIZATION.'.$ext;
 
-            $file->move($targetDir, $file_name);
+            \App\Library\StorageHelper::storeUploadedFile($file, $targetDir, $file_name);
 
             $data['icon'] = $file_name;
         }
